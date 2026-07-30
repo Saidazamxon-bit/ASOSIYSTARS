@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
@@ -14,7 +14,7 @@ import { AnimatedStar } from '@/components/animated-star'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://6a4cc7f182c08.xvest2.ru'
 
-type PremiumPlan = { key: string; name: string; price: number }
+type PremiumPlan = { key: string; name: string; price: number; months: 3 | 6 | 12 }
 
 export function PremiumSection() {
   const { settings } = useAppSettings()
@@ -44,7 +44,11 @@ export function PremiumSection() {
       .then((data) => {
         if (!mounted) return
         const pp = data?.catalog?.premium_plans || {}
-        const list: PremiumPlan[] = Object.keys(pp).map((k) => ({ key: k, name: pp[k].name, price: pp[k].price }))
+        const list: PremiumPlan[] = Object.keys(pp).map((k) => {
+          const parsedMonths = parseInt(k, 10)
+          const months = (parsedMonths === 3 || parsedMonths === 6 || parsedMonths === 12 ? parsedMonths : 12) as 3 | 6 | 12
+          return { key: k, name: pp[k].name, price: pp[k].price, months }
+        })
         // preserve order: try common ordering
         const order = ['3m', '6m', '12m', '12a']
         list.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key))
@@ -157,15 +161,15 @@ export function PremiumSection() {
         label="Premium"
         total={total}
         accent="violet"
-        disabled={total <= 0 || username.trim().length < 3}
-        productName={`${plan.months} months`}
+        disabled={!plan || total <= 0 || username.trim().length < 3}
+        productName={plan ? `${plan.months} months` : ''}
         action={
           <motion.button
             type="button"
             whileTap={animationEnabled ? { scale: 0.95 } : undefined}
             whileHover={animationEnabled ? { y: -1, boxShadow: '0 16px 40px rgba(168,85,247,0.16)' } : undefined}
             onClick={() => {
-              if (!username.trim() || total <= 0) return
+              if (!plan || !username.trim() || total <= 0) return
               if (balance < total) {
                 setPurchaseError('USD balans yetarlik emas. BALANSDA muammo — admin bilan bog‘laning.')
                 playUIEvent('insufficient')
@@ -184,7 +188,7 @@ export function PremiumSection() {
 
       {sentToPremium ? (
         <div className="rounded-[20px] border border-emerald-400/20 bg-emerald-400/10 p-3 text-sm font-semibold text-emerald-200">
-          {`Sent ${plan.months} months Premium to ${sentToPremium}`}
+          {`Sent ${plan?.months} months Premium to ${sentToPremium}`}
         </div>
       ) : null}
 
@@ -206,7 +210,7 @@ export function PremiumSection() {
                 <div className="rounded-[22px] border border-white/10 bg-white/[0.04] p-4 text-center">
                   <p className="text-sm font-semibold uppercase tracking-[0.25em] text-white/40">Confirm</p>
                   <p className="mt-3 text-base font-semibold text-white">
-                    Send {plan.months} months Premium for {formatCurrency(plan.usdt * STAR_RATE, settings.currency)}?
+                    Send {plan?.months} months Premium for {formatCurrency(plan?.price ?? 0, settings.currency)}?
                   </p>
                 </div>
                 <div className="flex gap-3">
@@ -221,10 +225,11 @@ export function PremiumSection() {
                     type="button"
                     disabled={submitting}
                     onClick={async () => {
+                      if (!plan) return
                       setSubmitting(true)
                       setPurchaseError(null)
                       try {
-                        const months = plan.months as 3 | 6 | 12
+                        const months = plan.months
                         const idempotencyKey = `premium-${username}-${months}-${Date.now()}`
                         const result = await starstgClient.purchasePremium({
                           username: username.trim(),
