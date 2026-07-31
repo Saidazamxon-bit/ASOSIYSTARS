@@ -1,13 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { X, Wallet, CreditCard, Clock3, AlertCircle, CheckCircle2, Copy } from 'lucide-react'
 import { useBalance, formatUZS } from '@/components/balance-provider'
 import { useNotifications } from '@/components/notification-context'
 
 const QUICK_AMOUNTS = [20000, 50000, 100000, 220000, 500000, 1000000]
-const POLL_INTERVAL_MS = 4000
 
 function useCountdown(expiresAt: string | null) {
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null)
@@ -37,7 +36,6 @@ export function TopUpModal() {
   const [errorMsg, setErrorMsg] = useState('')
   const [copied, setCopied] = useState<'card' | 'amount' | null>(null)
   const [checking, setChecking] = useState(false)
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const finalAmount = custom ? Number(custom.replace(/\D/g, '')) : amount
   const secondsLeft = useCountdown(topUpRequest?.expiresAt ?? null)
@@ -48,10 +46,11 @@ export function TopUpModal() {
     const result = await checkTopUpStatus()
     setChecking(false)
     if (result === 'pending') {
-      addNotification("To'lov hali qabul qilinmadi", 'Bizga hali pul kelib tushmadi, biroz kuting yoki qayta urinib ko\'ring', {
-        emoji: '⏳',
-        color: '#fbbf24',
-      })
+      addNotification(
+        "Hali tekshirilmoqda...",
+        "To'lov ba'zan bir necha soniya kech tasdiqlanadi. Sahifani yopmang — tayyor bo'lishi bilan avtomatik xabar beramiz.",
+        { emoji: '⏳', color: '#fbbf24' },
+      )
     } else if (result === null) {
       addNotification('Tekshirib bo\'lmadi', "Server bilan bog'lanishda xatolik yuz berdi, qayta urinib ko'ring", {
         emoji: '⚠️',
@@ -61,29 +60,9 @@ export function TopUpModal() {
     // 'approved' va 'rejected' holatlari uchun modal o'zi tegishli ekranni ko'rsatadi
   }
 
-  // To'lov so'rovi ochiq va hali kutilmoqda bo'lsa — avtomatik holatni tekshirib turamiz
-  useEffect(() => {
-    if (topUpRequest?.status !== 'pending') {
-      if (pollRef.current) clearInterval(pollRef.current)
-      return
-    }
-    pollRef.current = setInterval(() => {
-      checkTopUpStatus()
-    }, POLL_INTERVAL_MS)
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [topUpRequest?.status, topUpRequest?.id])
-
-  useEffect(() => {
-    if (topUpRequest?.status === 'approved') {
-      addNotification("Balans to'ldirildi!", `${formatUZS(topUpRequest.amount)} UZS hisobingizga tushdi`, {
-        emoji: '✅',
-        color: '#34d399',
-      })
-    }
-  }, [topUpRequest?.status])
+  // DIQQAT: davriy tekshiruv (polling) va "tasdiqlandi" bildirishnomasi endi
+  // BalanceProvider + TopUpWatcher orqali GLOBAL tarzda ishlaydi — modal yopiq
+  // bo'lsa ham to'xtamaydi. Shuning uchun bu yerda alohida polling shart emas.
 
   async function handleTopUp() {
     if (finalAmount <= 0 || status === 'submitting') return
@@ -105,7 +84,12 @@ export function TopUpModal() {
   }
 
   function handleClose() {
-    clearTopUpRequest()
+    // "pending" holatda modalni yopsak ham so'rovni tozalamaymiz — fon rejimida
+    // tekshiruv davom etadi, to'lov tasdiqlansa foydalanuvchiga xabar beriladi.
+    // Faqat hal bo'lgan (approved/rejected) so'rovni "Yopish" bosilganda tozalaymiz.
+    if (!topUpRequest || topUpRequest.status !== 'pending') {
+      clearTopUpRequest()
+    }
     closeTopUp()
   }
 
