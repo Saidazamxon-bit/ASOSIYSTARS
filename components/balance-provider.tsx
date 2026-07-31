@@ -23,6 +23,14 @@ export type PurchaseDetails = {
 
 export type ActionResult = { success: boolean; error?: string }
 
+export type TopUpRequestInfo = {
+  id: number
+  amount: number
+  cardNumber: string | null
+  expiresAt: string | null
+  status: 'pending' | 'approved' | 'rejected'
+}
+
 export type UserProfile = {
   id?: number
   telegramId?: number | string
@@ -49,7 +57,10 @@ type BalanceContextValue = {
   openTopUp: () => void
   closeTopUp: () => void
   purchase: (details: PurchaseDetails) => Promise<ActionResult>
+  topUpRequest: TopUpRequestInfo | null
   requestTopUp: (amount: number) => Promise<ActionResult>
+  checkTopUpStatus: () => Promise<void>
+  clearTopUpRequest: () => void
   refresh: () => Promise<void>
   /** Faqat balans yetarliligini tekshiradi, hech narsani o'zgartirmaydi. */
   spend: (amount: number) => boolean
@@ -136,14 +147,21 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
     [],
   )
 
+  const [topUpRequest, setTopUpRequest] = useState<TopUpRequestInfo | null>(null)
+
   const requestTopUp = useCallback(async (amount: number): Promise<ActionResult> => {
     try {
       const res = await api.requestTopUp(amount)
-      if (res.user) {
-        setUser(res.user)
-        setBalance(res.user.balance)
-      }
       setPaymentInstructions(res.paymentInstructions || paymentInstructions)
+      if (res.request) {
+        setTopUpRequest({
+          id: res.request.id,
+          amount: res.request.amount,
+          cardNumber: res.request.cardNumber ?? null,
+          expiresAt: res.request.expiresAt ?? null,
+          status: res.request.status ?? 'pending',
+        })
+      }
       return { success: true }
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : String(err)
@@ -152,11 +170,41 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  /** Frontend hisob to'ldirish modalidan davriy chaqiriladi (polling) — to'lov holatini yangilaydi. */
+  const checkTopUpStatus = useCallback(async () => {
+    if (!topUpRequest) return
+    try {
+      const res = await api.topupStatus(topUpRequest.id)
+      setTopUpRequest((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: res.request.status,
+              cardNumber: res.request.cardNumber ?? prev.cardNumber,
+              expiresAt: res.request.expiresAt ?? prev.expiresAt,
+            }
+          : prev,
+      )
+      if (res.request.status === 'approved' && typeof res.balance === 'number') {
+        setBalance(res.balance)
+        refresh()
+      }
+    } catch {
+      // Polling xatosi jim o'tkaziladi — keyingi urinishda davom etadi
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topUpRequest?.id, refresh])
+
+  const clearTopUpRequest = useCallback(() => setTopUpRequest(null), [])
+
   /** Eski, o'qib bo'lmaydigan kod yo'llari uchun — mutatsiya qilmaydi. */
   const spend = useCallback((amount: number) => balance >= amount, [balance])
 
   const openTopUp = useCallback(() => setIsTopUpOpen(true), [])
-  const closeTopUp = useCallback(() => setIsTopUpOpen(false), [])
+  const closeTopUp = useCallback(() => {
+    setIsTopUpOpen(false)
+    setTopUpRequest(null)
+  }, [])
 
   const value = useMemo(
     () => ({
@@ -170,11 +218,31 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
       openTopUp,
       closeTopUp,
       purchase,
+      topUpRequest,
       requestTopUp,
+      checkTopUpStatus,
+      clearTopUpRequest,
       refresh,
       spend,
     }),
-    [user, balance, loading, authError, history, paymentInstructions, isTopUpOpen, openTopUp, closeTopUp, purchase, requestTopUp, refresh, spend],
+    [
+      user,
+      balance,
+      loading,
+      authError,
+      history,
+      paymentInstructions,
+      isTopUpOpen,
+      openTopUp,
+      closeTopUp,
+      purchase,
+      topUpRequest,
+      requestTopUp,
+      checkTopUpStatus,
+      clearTopUpRequest,
+      refresh,
+      spend,
+    ],
   )
 
   return <BalanceContext.Provider value={value}>{children}</BalanceContext.Provider>
