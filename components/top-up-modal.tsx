@@ -273,6 +273,12 @@ export function TopUpModal() {
               aria-label="Summa kiriting"
             />
 
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+              ⚠️ Keyingi bosqichda ko&apos;rsatiladigan <b>aniq summani</b> to&apos;liq kartaga o&apos;tkazing — u bir
+              necha so&apos;mga farq qilishi mumkin (boshqa foydalanuvchilar to&apos;lovidan ajratish uchun). Boshqa
+              summa yuborsangiz, to&apos;lov avtomatik aniqlanmaydi.
+            </p>
+
             {status === 'error' ? (
               <div className="mt-3 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
                 <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
