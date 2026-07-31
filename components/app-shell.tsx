@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import React, { useCallback, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
@@ -8,6 +8,7 @@ import { Home, Store, Wallet, Globe, Plus, User, Briefcase } from 'lucide-react'
 import { useBalance, formatUZS } from '@/components/balance-provider'
 import { NumberTicker } from '@/registry/magicui/number-ticker'
 import { TopUpModal } from '@/components/top-up-modal'
+import { TopUpWatcher } from '@/components/topup-watcher'
 import { NotificationsProvider } from '@/components/notification-context'
 import { primeAudio, initClickSoundHandler } from '@/lib/sounds'
 import LanguageInit from '@/components/language-init'
@@ -213,6 +214,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
 
+      <TopUpWatcher />
       <AnimatePresence>{isTopUpOpen && <TopUpModal />}</AnimatePresence>
       </div>
     </NotificationsProvider>
