@@ -82,6 +82,7 @@ export const api = {
   topupInfo: () => apiFetch('/api/topup.php'),
   requestTopUp: (amount: number) =>
     apiFetch('/api/topup.php', { method: 'POST', body: JSON.stringify({ amount }) }),
+  topupStatus: (id: number) => apiFetch(`/api/topup_status.php?id=${id}`),
   createOrder: (payload: Record<string, unknown>) =>
     apiFetch('/api/orders.php', { method: 'POST', body: JSON.stringify(payload) }),
   orders: (page = 1) => apiFetch(`/api/orders.php?page=${page}`),
