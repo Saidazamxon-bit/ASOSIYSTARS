@@ -59,7 +59,7 @@ type BalanceContextValue = {
   purchase: (details: PurchaseDetails) => Promise<ActionResult>
   topUpRequest: TopUpRequestInfo | null
   requestTopUp: (amount: number) => Promise<ActionResult>
-  checkTopUpStatus: () => Promise<void>
+  checkTopUpStatus: () => Promise<'pending' | 'approved' | 'rejected' | null>
   clearTopUpRequest: () => void
   refresh: () => Promise<void>
   /** Faqat balans yetarliligini tekshiradi, hech narsani o'zgartirmaydi. */
@@ -170,9 +170,9 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  /** Frontend hisob to'ldirish modalidan davriy chaqiriladi (polling) — to'lov holatini yangilaydi. */
-  const checkTopUpStatus = useCallback(async () => {
-    if (!topUpRequest) return
+  /** "Tekshirish" tugmasi bosilganda HAM, davriy polling uchun HAM ishlatiladi — natijani qaytaradi. */
+  const checkTopUpStatus = useCallback(async (): Promise<'pending' | 'approved' | 'rejected' | null> => {
+    if (!topUpRequest) return null
     try {
       const res = await api.topupStatus(topUpRequest.id)
       setTopUpRequest((prev) =>
@@ -189,8 +189,10 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
         setBalance(res.balance)
         refresh()
       }
+      return res.request.status
     } catch {
       // Polling xatosi jim o'tkaziladi — keyingi urinishda davom etadi
+      return null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topUpRequest?.id, refresh])
