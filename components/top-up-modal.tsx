@@ -36,10 +36,30 @@ export function TopUpModal() {
   const [status, setStatus] = useState<'idle' | 'submitting' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
   const [copied, setCopied] = useState<'card' | 'amount' | null>(null)
+  const [checking, setChecking] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const finalAmount = custom ? Number(custom.replace(/\D/g, '')) : amount
   const secondsLeft = useCountdown(topUpRequest?.expiresAt ?? null)
+
+  async function handleManualCheck() {
+    if (checking) return
+    setChecking(true)
+    const result = await checkTopUpStatus()
+    setChecking(false)
+    if (result === 'pending') {
+      addNotification("To'lov hali qabul qilinmadi", 'Bizga hali pul kelib tushmadi, biroz kuting yoki qayta urinib ko\'ring', {
+        emoji: '⏳',
+        color: '#fbbf24',
+      })
+    } else if (result === null) {
+      addNotification('Tekshirib bo\'lmadi', "Server bilan bog'lanishda xatolik yuz berdi, qayta urinib ko'ring", {
+        emoji: '⚠️',
+        color: '#f87171',
+      })
+    }
+    // 'approved' va 'rejected' holatlari uchun modal o'zi tegishli ekranni ko'rsatadi
+  }
 
   // To'lov so'rovi ochiq va hali kutilmoqda bo'lsa — avtomatik holatni tekshirib turamiz
   useEffect(() => {
@@ -192,11 +212,12 @@ export function TopUpModal() {
             <motion.button
               type="button"
               whileTap={{ scale: 0.97 }}
-              onClick={() => checkTopUpStatus()}
+              onClick={handleManualCheck}
+              disabled={checking}
               data-disable-sound="true"
-              className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl bg-gold py-3 text-sm font-bold text-gold-foreground"
+              className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl bg-gold py-3 text-sm font-bold text-gold-foreground disabled:opacity-60"
             >
-              To&apos;lovni tekshirish
+              {checking ? 'Tekshirilmoqda...' : "To'lovni tekshirish"}
             </motion.button>
           </div>
         ) : topUpRequest && topUpRequest.status === 'rejected' ? (
