@@ -68,6 +68,11 @@ type BalanceContextValue = {
 
 const BalanceContext = createContext<BalanceContextValue | null>(null)
 
+// Foydalanuvchi modal oynasini yopib qo'yса ham (yoki ilovani qayta ochsa ham),
+// hali tasdiqlanmagan to'lov so'rovini "unutib qo'ymaslik" uchun saqlab turamiz.
+const TOPUP_STORAGE_KEY = 'ultra:topup-request'
+const TOPUP_POLL_INTERVAL_MS = 4000
+
 export function formatUZS(amount: number) {
   return String(Math.round(amount)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
 }
@@ -149,6 +154,39 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
 
   const [topUpRequest, setTopUpRequest] = useState<TopUpRequestInfo | null>(null)
 
+  // Ilova ochilganda — agar oldin yopilmagan/hal bo'lmagan "pending" so'rov qolgan bo'lsa,
+  // uni localStorage'dan tiklaymiz (masalan foydalanuvchi to'lov qilib, modalni yopib
+  // yuborgan, keyin sahifani yangilagan bo'lsa ham — kuzatuv uzilib qolmaydi).
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const raw = window.localStorage.getItem(TOPUP_STORAGE_KEY)
+      if (!raw) return
+      const parsed = JSON.parse(raw) as TopUpRequestInfo
+      if (parsed && parsed.status === 'pending') {
+        setTopUpRequest(parsed)
+      } else {
+        window.localStorage.removeItem(TOPUP_STORAGE_KEY)
+      }
+    } catch {
+      // buzilgan qiymat bo'lsa — e'tiborsiz qoldiramiz
+    }
+  }, [])
+
+  // topUpRequest o'zgarganda holatni saqlab boramiz (yoki tozalaymiz)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      if (topUpRequest) {
+        window.localStorage.setItem(TOPUP_STORAGE_KEY, JSON.stringify(topUpRequest))
+      } else {
+        window.localStorage.removeItem(TOPUP_STORAGE_KEY)
+      }
+    } catch {
+      // localStorage yo'q/bloklangan bo'lsa ham ilova ishlashda davom etadi
+    }
+  }, [topUpRequest])
+
   const requestTopUp = useCallback(async (amount: number): Promise<ActionResult> => {
     try {
       const res = await api.requestTopUp(amount)
@@ -197,6 +235,18 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topUpRequest?.id, refresh])
 
+  // Fon rejimidagi tekshiruv: modal ochiq yoki yopiq bo'lishidan qat'iy nazar,
+  // "pending" so'rov borligicha davom etamiz — shu orqali foydalanuvchi modalni
+  // yopib qo'ysa ham (masalan "hali qabul qilinmadi" xabarini ko'rib), to'lov
+  // keyinroq tasdiqlansa, buni albatta ushlab qolamiz va balans/holat yangilanadi.
+  useEffect(() => {
+    if (!topUpRequest || topUpRequest.status !== 'pending') return
+    const id = setInterval(() => {
+      checkTopUpStatus()
+    }, TOPUP_POLL_INTERVAL_MS)
+    return () => clearInterval(id)
+  }, [topUpRequest?.id, topUpRequest?.status, checkTopUpStatus])
+
   const clearTopUpRequest = useCallback(() => setTopUpRequest(null), [])
 
   /** Eski, o'qib bo'lmaydigan kod yo'llari uchun — mutatsiya qilmaydi. */
@@ -204,8 +254,10 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
 
   const openTopUp = useCallback(() => setIsTopUpOpen(true), [])
   const closeTopUp = useCallback(() => {
+    // DIQQAT: bu yerda topUpRequest'ni tozalamaymiz — agar hali "pending" bo'lsa,
+    // fon rejimidagi tekshiruv (yuqoridagi useEffect) davom etishi kerak, aks holda
+    // foydalanuvchi modalni yopib yuborsa, keyinroq kelgan tasdiqlash "yo'qolib qoladi".
     setIsTopUpOpen(false)
-    setTopUpRequest(null)
   }, [])
 
   const value = useMemo(
