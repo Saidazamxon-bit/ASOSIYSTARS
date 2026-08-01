@@ -11,8 +11,8 @@ type GiftItem = {
   id: string
   name: string
   emoji?: string
+  imageUrl?: string | null
   price: number
-  stars?: number
   tier?: 'Common' | 'Unique' | string
 }
 
@@ -236,13 +236,26 @@ export function RegularGifts() {
                   className="relative flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-secondary/60 px-2 pb-3 pt-4"
                   aria-label={g.name + ' — ' + formatUZS(g.price) + ' UZS, ' + t('purchase.buy')}
                 >
-                  <span className="text-4xl leading-none" role="img" aria-hidden="true">
-                    {g.emoji}
-                  </span>
-                  <span className="text-xs font-bold text-foreground">{g.name}</span>
-                  {typeof g.stars === 'number' && g.stars > 0 && (
-                    <span className="font-mono text-[11px] font-bold text-gold">⭐ {g.stars}</span>
+                  {g.imageUrl ? (
+                    <img
+                      src={`${API_BASE}${g.imageUrl}`}
+                      alt={g.name}
+                      className="h-10 w-10 object-contain"
+                      onError={(e) => {
+                        // Telegram'dan rasm hali keshlanmagan/topilmagan bo'lsa — emojiga qaytamiz.
+                        const target = e.currentTarget
+                        const fallback = document.createElement('span')
+                        fallback.textContent = g.emoji || '🎁'
+                        fallback.className = 'text-4xl leading-none'
+                        target.replaceWith(fallback)
+                      }}
+                    />
+                  ) : (
+                    <span className="text-4xl leading-none" role="img" aria-hidden="true">
+                      {g.emoji}
+                    </span>
                   )}
+                  <span className="text-xs font-bold text-foreground">{g.name}</span>
                   <span className="font-mono text-[11px] font-bold text-price">
                     {formatUZS(g.price)} <span className="text-[9px]">UZS</span>
                   </span>
