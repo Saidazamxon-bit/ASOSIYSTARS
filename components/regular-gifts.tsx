@@ -12,6 +12,7 @@ type GiftItem = {
   name: string
   emoji?: string
   price: number
+  stars?: number
   tier?: 'Common' | 'Unique' | string
 }
 
@@ -239,6 +240,9 @@ export function RegularGifts() {
                     {g.emoji}
                   </span>
                   <span className="text-xs font-bold text-foreground">{g.name}</span>
+                  {typeof g.stars === 'number' && g.stars > 0 && (
+                    <span className="font-mono text-[11px] font-bold text-gold">⭐ {g.stars}</span>
+                  )}
                   <span className="font-mono text-[11px] font-bold text-price">
                     {formatUZS(g.price)} <span className="text-[9px]">UZS</span>
                   </span>
