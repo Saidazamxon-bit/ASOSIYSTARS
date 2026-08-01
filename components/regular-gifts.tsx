@@ -15,29 +15,83 @@ type GiftItem = {
   tier?: 'Common' | 'Unique' | string
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://6a4cc7f182c08.xvest2.ru'
-
-// Giftlar ro'yxati (nom/narx/tier) to'g'ridan-to'g'ri shu yerda mahkamlangan —
-// backendga so'rov yuborilmaydi. `id` maydoni backend config/catalog.php dagi
+// Giftlar ro'yxati endi backenddan so'ralmaydi — to'g'ridan-to'g'ri shu yerda
+// mahkamlangan (nom, narx, rasm). `id` maydoni backend config/catalog.php dagi
 // kalit bilan BIR XIL bo'lishi SHART — xarid qilishda shu id (productKey)
-// serverga yuboriladi va narx serverning o'zida qayta tekshirib hisoblanadi.
-//
-// RASM esa to'g'ridan-to'g'ri tashqi havoladan EMAS, o'zimizning
-// api/gift_image.php orqali ko'rsatiladi: server rasmni bir marta o'zi
-// yuklab, doimiy keshlab, keyin bergani uchun tashqi sayt (hotlink himoyasi,
-// CORS, vaqtinchalik havola va h.k. tufayli) brauzerga to'g'ridan-to'g'ri
-// yuklanmay qolish muammosi butunlay yo'qoladi.
+// serverga yuboriladi va narx serverning o'zida (config/catalog.php) qayta
+// tekshirib hisoblanadi, shuning uchun bu yerdagi narxlar faqat ko'rsatish
+// uchun, lekin baribir haqiqiy hisob-kitob bilan bir xil bo'lishi kerak.
 const STATIC_GIFTS: GiftItem[] = [
-  { id: 'heart', name: 'Heart', price: 3399, tier: 'Common', imageUrl: '/api/gift_image.php?key=heart' },
-  { id: 'bear', name: 'Teddy Bear', price: 3399, tier: 'Common', imageUrl: '/api/gift_image.php?key=bear' },
-  { id: 'gift', name: 'Gift Box', price: 5599, tier: 'Common', imageUrl: '/api/gift_image.php?key=gift' },
-  { id: 'rose', name: 'Rose', price: 5599, tier: 'Common', imageUrl: '/api/gift_image.php?key=rose' },
-  { id: 'cake', name: 'Cake', price: 10000, tier: 'Common', imageUrl: '/api/gift_image.php?key=cake' },
-  { id: 'bouquet', name: 'Bouquet', price: 10000, tier: 'Unique', imageUrl: '/api/gift_image.php?key=bouquet' },
-  { id: 'diamond', name: 'Diamond', price: 20000, tier: 'Unique', imageUrl: '/api/gift_image.php?key=diamond' },
-  { id: 'champagne', name: 'Champagne', price: 20000, tier: 'Unique', imageUrl: '/api/gift_image.php?key=champagne' },
-  { id: 'ring', name: 'Ring', price: 20000, tier: 'Unique', imageUrl: '/api/gift_image.php?key=ring' },
-  { id: 'trophy', name: 'Trophy', price: 20000, tier: 'Unique', imageUrl: '/api/gift_image.php?key=trophy' },
+  {
+    id: 'heart',
+    name: 'Heart',
+    price: 3399,
+    tier: 'Common',
+    imageUrl: 'https://gif-timg.vercel.app/IMG/heart.png',
+  },
+  {
+    id: 'bear',
+    name: 'Teddy Bear',
+    price: 3399,
+    tier: 'Common',
+    imageUrl: 'https://gif-timg.vercel.app/IMG/teddy%20bear.png',
+  },
+  {
+    id: 'gift',
+    name: 'Gift Box',
+    price: 5599,
+    tier: 'Common',
+    imageUrl: 'https://gif-timg.vercel.app/IMG/gift%20box.png',
+  },
+  {
+    id: 'rose',
+    name: 'Rose',
+    price: 5599,
+    tier: 'Common',
+    imageUrl: 'https://gif-timg.vercel.app/IMG/rose.png',
+  },
+  {
+    id: 'cake',
+    name: 'Cake',
+    price: 10000,
+    tier: 'Common',
+    imageUrl: 'https://gif-timg.vercel.app/IMG/cake.png',
+  },
+   {
+    id: 'bouquet',
+    name: 'Bouquet',
+    price: 10000,
+    tier: 'Unique',
+    imageUrl: 'https://gif-timg.vercel.app/IMG/bouquet.png',
+  },
+  {
+    id: 'diamond',
+    name: 'Diamond',
+    price: 20000,
+    tier: 'Unique',
+    imageUrl: 'https://gif-timg.vercel.app/IMG/diamond.png',
+  },
+  {
+    id: 'champagne',
+    name: 'Champagne',
+    price: 20000,
+    tier: 'Unique',
+    imageUrl: 'https://gif-timg.vercel.app/IMG/champagne.png',
+  },
+  {
+    id: 'ring',
+    name: 'Ring',
+    price: 20000,
+    tier: 'Unique',
+    imageUrl: 'https://gif-timg.vercel.app/IMG/ring.png',
+  },
+  {
+    id: 'trophy',
+    name: 'Trophy',
+    price: 20000,
+    tier: 'Unique',
+    imageUrl: 'https://gif-timg.vercel.app/IMG/trophy.png',
+  },
 ]
 
 const TIERS = ['Barcha', 'Common', 'Unique'] as const
@@ -253,7 +307,7 @@ export function RegularGifts() {
                 >
                   {g.imageUrl ? (
                     <img
-                      src={g.imageUrl ? `${API_BASE}${g.imageUrl}` : ''}
+                      src={g.imageUrl || ''}
                       alt={g.name}
                       className="h-10 w-10 object-contain"
                       onError={(e) => {
