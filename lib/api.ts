@@ -87,4 +87,6 @@ export const api = {
     apiFetch('/api/orders.php', { method: 'POST', body: JSON.stringify(payload) }),
   orders: (page = 1) => apiFetch(`/api/orders.php?page=${page}`),
   catalog: () => apiFetch('/api/catalog.php'),
+  leaderboard: (period: 'today' | 'week' | 'month' | 'all' = 'all') =>
+    apiFetch(`/api/leaderboard.php?period=${period}`),
 }
