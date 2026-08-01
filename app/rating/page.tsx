@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Crown, TrendingUp, Trophy } from 'lucide-react'
 import { formatUZS } from '@/components/balance-provider'
+import { api } from '@/lib/api'
 
 type LeaderboardEntry = {
   rank: number
@@ -44,9 +45,10 @@ export default function RatingPage() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/leaderboard?period=${p}`, { cache: 'no-store' })
-      const data = await res.json()
-      if (!res.ok || data.ok === false) throw new Error('failed')
+      // Reyting ENDI real backenddan (api/leaderboard.php) olinadi — demo
+      // ma'lumotlar ishlatilmaydi. Foydalanuvchi bo'lmasa rows bo'sh keladi
+      // va pastdagi "Bu davr uchun ma'lumot yo'q" holati ko'rsatiladi.
+      const data = await api.leaderboard(p)
       setRows(data.rows ?? [])
     } catch {
       setError("Reytingni yuklab bo'lmadi")
