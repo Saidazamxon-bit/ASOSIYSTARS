@@ -23,7 +23,7 @@ const TIERS = ['Barcha', 'Common', 'Unique'] as const
 export function RegularGifts() {
   const [sort, setSort] = useState<'asc' | 'desc'>('asc')
   const [tier, setTier] = useState<(typeof TIERS)[number]>('Barcha')
-  const { balance, purchase, openTopUp } = useBalance()
+  const { balance, purchase, openTopUp, setPendingResume } = useBalance()
   const [bought, setBought] = useState<string | null>(null)
   const [boughtTo, setBoughtTo] = useState<string | null>(null)
   const [confirmingGift, setConfirmingGift] = useState<GiftItem | null>(null)
@@ -61,16 +61,25 @@ export function RegularGifts() {
     return [...filtered].sort((a, b) => (sort === 'asc' ? a.price - b.price : b.price - a.price))
   }, [sort, tier, gifts])
 
-  function handleBuy(g: GiftItem) {
-    if (balance < g.price) {
-      openTopUp()
-      return
-    }
+  function openBuyModal(g: GiftItem) {
     setRecipient('')
     setRecipientTouched(false)
     setPurchaseError(null)
     setFoundUser(null)
     setConfirmingGift(g)
+  }
+
+  function handleBuy(g: GiftItem) {
+    if (balance < g.price) {
+      // Yetmayotgan aniq summani avtomatik to'lov (karta) oynasida oldindan
+      // to'ldirib qo'yamiz. To'lov tasdiqlangach xarid o'zi davom etadi —
+      // foydalanuvchi qaytadan giftni bosishi shart emas, to'g'ridan-to'g'ri
+      // username so'rash ekraniga o'tadi.
+      setPendingResume(() => () => openBuyModal(g))
+      openTopUp(g.price - balance)
+      return
+    }
+    openBuyModal(g)
   }
 
   async function checkUser() {
