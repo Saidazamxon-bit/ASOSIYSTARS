@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
@@ -8,6 +8,7 @@ import { playUIEvent } from '@/lib/sounds'
 import { UsernameField } from '@/components/username-field'
 import { PurchaseBar } from '@/components/purchase-bar'
 import { useBalance } from '@/components/balance-provider'
+import { useNotifications } from '@/components/notification-context'
 import { useTranslation } from '@/lib/languageManager'
 import { starstgClient } from '@/lib/starstg-client'
 import { AnimatedStar } from '@/components/animated-star'
@@ -22,6 +23,7 @@ type StarsPackage = { stars: number; price: number; bonus?: string }
 export function StarsSection() {
   const { settings } = useAppSettings()
   const { balance, purchase, openTopUp, user } = useBalance()
+  const { addNotification } = useNotifications()
   const { t } = useTranslation() as any
   const [starRate, setStarRate] = useState<number | null>(null)
   const [packages, setPackages] = useState<StarsPackage[]>([])
@@ -250,6 +252,11 @@ export function StarsSection() {
               if (balance < total) {
                 setPurchaseError('USD balans yetarlik emas. BALANSDA muammo — admin bilan bog‘laning.')
                 playUIEvent('insufficient')
+                addNotification(
+                  'Balans yetarli emas',
+                  'Stars sotib olish uchun balansingizni to‘ldiring.',
+                  { emoji: '⚠️', color: '#ef4444' }
+                )
                 return
               }
               playUIEvent('click')
