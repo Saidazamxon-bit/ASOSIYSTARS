@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Gift, Coins, RefreshCw, ArrowUp, ArrowDown, Check } from 'lucide-react'
 import { useBalance, formatUZS } from '@/components/balance-provider'
@@ -15,7 +15,77 @@ type GiftItem = {
   tier?: 'Common' | 'Unique' | string
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://6a4cc7f182c08.xvest2.ru'
+// Giftlar ro'yxati endi backenddan so'ralmaydi — to'g'ridan-to'g'ri shu yerda
+// mahkamlangan (nom, narx, rasm). `id` maydoni backend config/catalog.php dagi
+// kalit bilan BIR XIL bo'lishi SHART — xarid qilishda shu id (productKey)
+// serverga yuboriladi va narx serverning o'zida (config/catalog.php) qayta
+// tekshirib hisoblanadi, shuning uchun bu yerdagi narxlar faqat ko'rsatish
+// uchun, lekin baribir haqiqiy hisob-kitob bilan bir xil bo'lishi kerak.
+const STATIC_GIFTS: GiftItem[] = [
+  {
+    id: 'heart',
+    name: 'Heart',
+    price: 3399,
+    tier: 'Common',
+    imageUrl: 'https://api.removal.ai/download/g2/preview/f11feacd-a8cb-4019-951d-9d98d160b026.png',
+  },
+  {
+    id: 'bear',
+    name: 'Teddy Bear',
+    price: 3399,
+    tier: 'Common',
+    imageUrl: 'https://api.removal.ai/download/g1/preview/807ef766-f276-4273-a17a-a18bf741d762.png',
+  },
+  {
+    id: 'gift',
+    name: 'Gift Box',
+    price: 5599,
+    tier: 'Common',
+    imageUrl: 'https://api.removal.ai/download/g1/preview/d99aa440-2330-4109-9ef3-4783b3eefbad.png',
+  },
+  {
+    id: 'rose',
+    name: 'Rose',
+    price: 5599,
+    tier: 'Common',
+    imageUrl: 'https://api.removal.ai/download/g1/preview/d57dc170-0c2f-4fa6-97c2-45ad63643d4b.png',
+  },
+  {
+    id: 'cake',
+    name: 'Cake',
+    price: 10000,
+    tier: 'Common',
+    imageUrl: 'https://api.removal.ai/download/g2/preview/b1113b13-24d9-4359-84aa-91857c535dac.png',
+  },
+  {
+    id: 'diamond',
+    name: 'Diamond',
+    price: 20000,
+    tier: 'Unique',
+    imageUrl: 'https://api.removal.ai/download/g1/preview/38774750-c99c-4938-9a82-b76fb01abff9.png',
+  },
+  {
+    id: 'champagne',
+    name: 'Champagne',
+    price: 20000,
+    tier: 'Unique',
+    imageUrl: 'https://api.removal.ai/download/g2/preview/63c256dc-e615-4066-8504-d5f135d378f8.png',
+  },
+  {
+    id: 'ring',
+    name: 'Ring',
+    price: 20000,
+    tier: 'Unique',
+    imageUrl: 'https://api.removal.ai/download/g2/preview/fae3591d-9eb1-41fd-9c91-ac5dafbd0f01.png',
+  },
+  {
+    id: 'trophy',
+    name: 'Trophy',
+    price: 20000,
+    tier: 'Unique',
+    imageUrl: 'https://api.removal.ai/download/g1/preview/8b7657b9-c31b-4fdc-a137-809eb4944a0f.png',
+  },
+]
 
 const TIERS = ['Barcha', 'Common', 'Unique'] as const
 
@@ -34,26 +104,10 @@ export function RegularGifts() {
   const [checkingUser, setCheckingUser] = useState(false)
   const { t } = useTranslation() as any
 
-  const [gifts, setGifts] = useState<GiftItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let mounted = true
-    setLoading(true)
-    fetch(`${API_BASE}/api/gifts.php?category=regular_gift`, { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((data) => {
-        if (!mounted) return
-        setGifts(data?.gifts || [])
-        setError(null)
-      })
-      .catch((err) => setError(String(err)))
-      .finally(() => setLoading(false))
-    return () => {
-      mounted = false
-    }
-  }, [])
+  // Ro'yxat to'g'ridan-to'g'ri STATIC_GIFTS'dan olinadi — tarmoq so'rovi shart emas.
+  const gifts = STATIC_GIFTS
+  const loading = false
+  const error = null as string | null
 
   const list = useMemo(() => {
     const filtered = tier === 'Barcha' ? gifts : gifts.filter((g) => g.tier === tier)
@@ -246,7 +300,7 @@ export function RegularGifts() {
                 >
                   {g.imageUrl ? (
                     <img
-                      src={`${API_BASE}${g.imageUrl}`}
+                      src={g.imageUrl || ''}
                       alt={g.name}
                       className="h-10 w-10 object-contain"
                       onError={(e) => {
