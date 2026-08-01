@@ -10,7 +10,6 @@ import { starstgClient } from '@/lib/starstg-client'
 type GiftItem = {
   id: string
   name: string
-  emoji?: string
   imageUrl?: string | null
   price: number
   tier?: 'Common' | 'Unique' | string
@@ -251,19 +250,20 @@ export function RegularGifts() {
                       alt={g.name}
                       className="h-10 w-10 object-contain"
                       onError={(e) => {
-                        // Telegram'dan rasm hali keshlanmagan/topilmagan bo'lsa — emojiga qaytamiz.
+                        // Rasm hali keshlanmagan/topilmagan bo'lsa — umumiy gift ikonkasiga qaytamiz.
                         const target = e.currentTarget
-                        const fallback = document.createElement('span')
-                        fallback.textContent = g.emoji || '🎁'
-                        fallback.className = 'text-4xl leading-none'
-                        target.replaceWith(fallback)
+                        target.style.display = 'none'
+                        const sibling = target.nextElementSibling as HTMLElement | null
+                        if (sibling) sibling.style.display = 'flex'
                       }}
                     />
-                  ) : (
-                    <span className="text-4xl leading-none" role="img" aria-hidden="true">
-                      {g.emoji}
-                    </span>
-                  )}
+                  ) : null}
+                  <span
+                    className="flex h-10 w-10 items-center justify-center"
+                    style={{ display: g.imageUrl ? 'none' : 'flex' }}
+                  >
+                    <Gift className="h-7 w-7 text-muted-foreground" aria-hidden="true" />
+                  </span>
                   <span className="text-xs font-bold text-foreground">{g.name}</span>
                   <span className="font-mono text-[11px] font-bold text-price">
                     {formatUZS(g.price)} <span className="text-[9px]">UZS</span>
