@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Gift, Coins, RefreshCw, ArrowUp, ArrowDown, Check } from 'lucide-react'
 import { useBalance, formatUZS } from '@/components/balance-provider'
 import { useTranslation } from '@/lib/languageManager'
+import { starstgClient } from '@/lib/starstg-client'
 
 type GiftItem = {
   id: string
@@ -29,6 +30,8 @@ export function RegularGifts() {
   const [recipientTouched, setRecipientTouched] = useState(false)
   const [purchaseError, setPurchaseError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [foundUser, setFoundUser] = useState<{ name: string; photo?: string; recipient: string } | null>(null)
+  const [checkingUser, setCheckingUser] = useState(false)
   const { t } = useTranslation() as any
 
   const [gifts, setGifts] = useState<GiftItem[]>([])
@@ -65,29 +68,47 @@ export function RegularGifts() {
     setRecipient('')
     setRecipientTouched(false)
     setPurchaseError(null)
+    setFoundUser(null)
     setConfirmingGift(g)
   }
 
-  async function confirmBuy() {
-    if (!confirmingGift) return
+  async function checkUser() {
     if (!recipient.trim()) {
       setRecipientTouched(true)
       return
     }
+    setPurchaseError(null)
+    setCheckingUser(true)
+    try {
+      const res = await starstgClient.search('stars', recipient.trim())
+      if (res.success && res.found) {
+        setFoundUser({ name: res.found.name, photo: res.found.photo, recipient: res.found.recipient })
+      } else {
+        setPurchaseError('Bunday foydalanuvchi mavjud emas')
+      }
+    } catch (err) {
+      setPurchaseError('Bunday foydalanuvchi mavjud emas')
+    }
+    setCheckingUser(false)
+  }
+
+  async function confirmBuy() {
+    if (!confirmingGift || !foundUser) return
     setSubmitting(true)
     setPurchaseError(null)
     const result = await purchase({
       category: 'regular_gift',
       productKey: confirmingGift.id,
-      targetUsername: recipient.trim(),
+      targetUsername: foundUser.recipient,
       amount: confirmingGift.price,
       productName: confirmingGift.name,
     })
     setSubmitting(false)
     if (result.success) {
       setBought(confirmingGift.id)
-      setBoughtTo(recipient.trim())
+      setBoughtTo(foundUser.recipient)
       setConfirmingGift(null)
+      setFoundUser(null)
       setTimeout(() => {
         setBought(null)
         setBoughtTo(null)
@@ -99,6 +120,7 @@ export function RegularGifts() {
 
   function cancelBuy() {
     setConfirmingGift(null)
+    setFoundUser(null)
   }
 
   return (
@@ -265,42 +287,75 @@ export function RegularGifts() {
                     {t('purchase.confirmBody', { name: confirmingGift.name, amount: formatUZS(confirmingGift.price) })}
                   </p>
                 </div>
-                <div className="mt-4">
-                  <label className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground" htmlFor="gift-recipient">
-                    {t('purchase.recipient')}
-                  </label>
-                  <input
-                    id="gift-recipient"
-                    value={recipient}
-                    onChange={(event) => setRecipient(event.target.value)}
-                    onBlur={() => setRecipientTouched(true)}
-                    placeholder={t('purchase.recipient.placeholder')}
-                    className="mt-2 w-full rounded-2xl border border-border bg-input px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-gold/60 focus:outline-none"
-                    aria-label={t('purchase.recipient')}
-                  />
-                  {recipientTouched && !recipient.trim() ? (
-                    <p className="mt-2 text-xs text-destructive">{t('purchase.recipientRequired')}</p>
-                  ) : null}
-                  {purchaseError ? (
-                    <p className="mt-2 text-xs font-semibold text-destructive">{purchaseError}</p>
-                  ) : null}
-                </div>
+
+                {foundUser ? (
+                  <div className="flex flex-col items-center gap-2 rounded-3xl bg-secondary/70 p-4 text-center">
+                    <div className="h-16 w-16 overflow-hidden rounded-full border border-gold/40 bg-background/40">
+                      {foundUser.photo ? (
+                        <img src={foundUser.photo} alt={foundUser.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-muted-foreground">
+                          {foundUser.name?.[0]?.toUpperCase() || '?'}
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-base font-semibold text-foreground">{foundUser.name}</p>
+                    <p className="text-xs text-muted-foreground">@{foundUser.recipient}</p>
+                    <p className="mt-1 text-xs font-semibold text-gold">Shu odamgami?</p>
+                  </div>
+                ) : (
+                  <div className="mt-4">
+                    <label className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground" htmlFor="gift-recipient">
+                      {t('purchase.recipient')}
+                    </label>
+                    <input
+                      id="gift-recipient"
+                      value={recipient}
+                      onChange={(event) => {
+                        setRecipient(event.target.value)
+                        setPurchaseError(null)
+                      }}
+                      onBlur={() => setRecipientTouched(true)}
+                      placeholder={t('purchase.recipient.placeholder')}
+                      className="mt-2 w-full rounded-2xl border border-border bg-input px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-gold/60 focus:outline-none"
+                      aria-label={t('purchase.recipient')}
+                    />
+                    {recipientTouched && !recipient.trim() ? (
+                      <p className="mt-2 text-xs text-destructive">{t('purchase.recipientRequired')}</p>
+                    ) : null}
+                    {purchaseError ? (
+                      <p className="mt-2 text-xs font-semibold text-destructive">{purchaseError}</p>
+                    ) : null}
+                  </div>
+                )}
+
                 <div className="flex gap-3">
                   <button
                     type="button"
-                    onClick={cancelBuy}
+                    onClick={foundUser ? () => setFoundUser(null) : cancelBuy}
                     className="flex-1 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-bold text-muted-foreground"
                   >
                     {t('action.cancel')}
                   </button>
-                  <button
-                    type="button"
-                    onClick={confirmBuy}
-                    disabled={!recipient.trim() || submitting}
-                    className="flex-1 rounded-2xl bg-gold px-4 py-3 text-sm font-bold text-gold-foreground disabled:opacity-40"
-                  >
-                    {submitting ? '...' : recipient.trim() ? t('purchase.confirmSend', { name: recipient.trim() }) : t('purchase.confirm')}
-                  </button>
+                  {foundUser ? (
+                    <button
+                      type="button"
+                      onClick={confirmBuy}
+                      disabled={submitting}
+                      className="flex-1 rounded-2xl bg-gold px-4 py-3 text-sm font-bold text-gold-foreground disabled:opacity-40"
+                    >
+                      {submitting ? '...' : t('purchase.confirm')}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={checkUser}
+                      disabled={!recipient.trim() || checkingUser}
+                      className="flex-1 rounded-2xl bg-gold px-4 py-3 text-sm font-bold text-gold-foreground disabled:opacity-40"
+                    >
+                      {checkingUser ? '...' : 'Keyingisi'}
+                    </button>
+                  )}
                 </div>
               </div>
             </motion.div>
