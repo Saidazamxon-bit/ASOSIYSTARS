@@ -38,6 +38,8 @@ export function StarsSection() {
   const [sentStars, setSentStars] = useState<number | null>(null)
   const [purchaseError, setPurchaseError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [foundUser, setFoundUser] = useState<{ name: string; photo?: string; recipient: string } | null>(null)
+  const [checkingUser, setCheckingUser] = useState(false)
   const reduced = useReducedMotion()
   const mode = reduced ? 'Off' : settings.animationMode
   const animationEnabled = mode !== 'Off'
@@ -242,7 +244,7 @@ export function StarsSection() {
             type="button"
             whileTap={animationEnabled ? { scale: 0.95 } : undefined}
             whileHover={animationEnabled ? { y: -1, boxShadow: '0 16px 40px rgba(255,213,74,0.16)' } : undefined}
-            onClick={() => {
+            onClick={async () => {
               if (!username.trim() || total <= 0 || !customValid) {
                 if (customError) {
                   setPurchaseError(customError)
@@ -261,11 +263,30 @@ export function StarsSection() {
               }
               playUIEvent('click')
               setPurchaseError(null)
+              setFoundUser(null)
+              setCheckingUser(true)
+              try {
+                const starsToSend = customCount > 0 ? customCount : selected !== null ? packages[selected]?.stars ?? 0 : 0
+                const res = await starstgClient.search('stars', username.trim(), starsToSend)
+                if (res.success && res.found) {
+                  setFoundUser({ name: res.found.name, photo: res.found.photo, recipient: res.found.recipient })
+                } else {
+                  setPurchaseError('Foydalanuvchi topilmadi. Username to‘g‘riligini tekshiring.')
+                  setCheckingUser(false)
+                  return
+                }
+              } catch (err) {
+                setPurchaseError('Foydalanuvchini aniqlashda xatolik. Username to‘g‘riligini tekshiring.')
+                setCheckingUser(false)
+                return
+              }
+              setCheckingUser(false)
               setConfirmingStars(true)
             }}
-            className="relative flex min-w-32 items-center justify-center gap-1.5 rounded-[18px] border border-[#FFB300]/40 bg-gradient-to-r from-[#FFD54A] to-[#FFB300] px-4 py-2.5 text-sm font-semibold text-[#1F1A05] shadow-[0_10px_32px_rgba(255,213,74,0.18)]"
+            className="relative flex min-w-32 items-center justify-center gap-1.5 rounded-[18px] border border-[#FFB300]/40 bg-gradient-to-r from-[#FFD54A] to-[#FFB300] px-4 py-2.5 text-sm font-semibold text-[#1F1A05] shadow-[0_10px_32px_rgba(255,213,74,0.18)] disabled:opacity-60"
+            disabled={checkingUser}
           >
-            {t('purchase.buy') || 'Buy'}
+            {checkingUser ? '...' : (t('purchase.buy') || 'Buy')}
           </motion.button>
         }
       />
@@ -296,6 +317,22 @@ export function StarsSection() {
               exit={{ y: 24, opacity: 0, scale: 0.98 }}
             >
               <div className="flex flex-col gap-4">
+                {foundUser ? (
+                  <div className="flex flex-col items-center gap-2 rounded-[22px] border border-white/10 bg-white/[0.04] p-4 text-center">
+                    <div className="h-16 w-16 overflow-hidden rounded-full border border-[#FFB300]/40 bg-black/30">
+                      {foundUser.photo ? (
+                        <img src={foundUser.photo} alt={foundUser.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-white/60">
+                          {foundUser.name?.[0]?.toUpperCase() || '?'}
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-base font-semibold text-white">{foundUser.name}</p>
+                    <p className="text-xs text-white/50">@{foundUser.recipient}</p>
+                    <p className="mt-1 text-xs font-semibold text-[#FFD54A]">Shu odamgami?</p>
+                  </div>
+                ) : null}
                 <div className="rounded-[22px] border border-white/10 bg-white/[0.04] p-4 text-center">
                   <p className="text-sm font-semibold uppercase tracking-[0.25em] text-white/40">{t('purchase.confirmTitle') || 'Confirm'}</p>
                   <p className="mt-3 text-base font-semibold text-white">
@@ -308,7 +345,10 @@ export function StarsSection() {
                 <div className="flex gap-3">
                   <button
                     type="button"
-                    onClick={() => setConfirmingStars(false)}
+                    onClick={() => {
+                      setConfirmingStars(false)
+                      setFoundUser(null)
+                    }}
                     className="flex-1 rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-white/70"
                   >
                     {t('action.cancel') || 'Cancel'}
