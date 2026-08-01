@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { Crown, Zap } from 'lucide-react'
 import { useAppSettings, formatCurrency } from '@/lib/application-settings'
 import { useBalance } from '@/components/balance-provider'
+import { useNotifications } from '@/components/notification-context'
 import { playUIEvent } from '@/lib/sounds'
 import { UsernameField } from '@/components/username-field'
 import { PurchaseBar } from '@/components/purchase-bar'
@@ -20,6 +21,7 @@ export function PremiumSection() {
   const { settings } = useAppSettings()
   const { t } = useTranslation() as any
   const { user, balance } = useBalance()
+  const { addNotification } = useNotifications()
   const [username, setUsername] = useState('')
   const [plans, setPlans] = useState<PremiumPlan[]>([])
   const [plansLoading, setPlansLoading] = useState(true)
@@ -173,6 +175,11 @@ export function PremiumSection() {
               if (balance < total) {
                 setPurchaseError('USD balans yetarlik emas. BALANSDA muammo — admin bilan bog‘laning.')
                 playUIEvent('insufficient')
+                addNotification(
+                  'Balans yetarli emas',
+                  'Premium sotib olish uchun balansingizni to‘ldiring.',
+                  { emoji: '⚠️', color: '#ef4444' }
+                )
                 return
               }
               playUIEvent('click')
