@@ -27,11 +27,28 @@ function useCountdown(expiresAt: string | null) {
 }
 
 export function TopUpModal() {
-  const { closeTopUp, requestTopUp, paymentInstructions, topUpRequest, checkTopUpStatus, clearTopUpRequest } =
-    useBalance()
+  const {
+    closeTopUp,
+    requestTopUp,
+    paymentInstructions,
+    topUpRequest,
+    checkTopUpStatus,
+    clearTopUpRequest,
+    topUpAmountHint,
+  } = useBalance()
   const { addNotification } = useNotifications()
   const [amount, setAmount] = useState<number>(0)
   const [custom, setCustom] = useState('')
+
+  // Gift/xarid uchun mablag' yetmagani sababli ochilgan bo'lsa — yetmayotgan
+  // aniq summa avtomatik oldindan tanlab qo'yiladi, foydalanuvchi qayta hisoblamaydi.
+  useEffect(() => {
+    if (topUpAmountHint && topUpAmountHint > 0 && !topUpRequest) {
+      setCustom(String(topUpAmountHint))
+      setAmount(0)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topUpAmountHint])
   const [status, setStatus] = useState<'idle' | 'submitting' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
   const [copied, setCopied] = useState<'card' | 'amount' | null>(null)
