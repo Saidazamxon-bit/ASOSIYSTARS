@@ -16,6 +16,17 @@ type LeaderboardEntry = {
   amount: number
 }
 
+type MeInfo = {
+  userId: number
+  username: string
+  displayName: string
+  vipLevel: number
+  amount: number
+  rank: number | null
+  totalParticipants: number
+  inTop10: boolean
+}
+
 type Period = 'today' | 'week' | 'month' | 'all'
 
 const PERIODS: { key: Period; label: string }[] = [
@@ -38,6 +49,7 @@ function initialsOf(name: string) {
 export default function RatingPage() {
   const [period, setPeriod] = useState<Period>('all')
   const [rows, setRows] = useState<LeaderboardEntry[]>([])
+  const [me, setMe] = useState<MeInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -50,9 +62,11 @@ export default function RatingPage() {
       // va pastdagi "Bu davr uchun ma'lumot yo'q" holati ko'rsatiladi.
       const data = await api.leaderboard(p)
       setRows(data.rows ?? [])
+      setMe(data.me ?? null)
     } catch {
       setError("Reytingni yuklab bo'lmadi")
       setRows([])
+      setMe(null)
     } finally {
       setLoading(false)
     }
@@ -229,6 +243,35 @@ export default function RatingPage() {
               </div>
             </motion.div>
           </AnimatePresence>
+        )}
+
+        {!loading && !error && me && (
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.4 }}
+            className="mt-4 flex items-center gap-3 rounded-[22px] border border-[var(--accent)]/30 p-3"
+            style={{ background: 'linear-gradient(145deg, rgba(23,26,35,0.96), rgba(17,19,26,0.98))' }}
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--accent)]/40 bg-[var(--accent)]/10 text-xs font-bold text-[var(--accent)]">
+              {me.rank ?? '—'}
+            </div>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-slate-900 text-sm font-semibold text-white/90">
+              {initialsOf(me.displayName)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-white">{me.displayName}</p>
+              <p className="truncate text-[11px] uppercase tracking-[0.2em] text-white/45">
+                {me.rank
+                  ? `Sizning o'rningiz — ${me.totalParticipants} ta ishtirokchidan`
+                  : "Bu davrda hali pul solmagansiz"}
+              </p>
+            </div>
+            <div className="flex items-center gap-1 text-right">
+              <TrendingUp className="h-3.5 w-3.5 text-[var(--accent)]" />
+              <p className="text-sm font-semibold text-white">{formatUZS(me.amount)}</p>
+            </div>
+          </motion.div>
         )}
       </main>
     </div>
