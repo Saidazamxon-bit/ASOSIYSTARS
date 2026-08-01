@@ -125,10 +125,16 @@ class LanguageManager extends EventTarget {
     this.translatePage()
   }
 
-  t(key: string) {
+  t(key: string, params?: Record<string, string | number>) {
     const current = (translations as any)[this.lang] || {}
     const fallback = (translations as any).en?.[key] ?? (translations as any).uz?.[key] ?? key
-    return current[key] ?? fallback
+    let text = current[key] ?? fallback
+    if (params && typeof text === 'string') {
+      Object.keys(params).forEach((paramKey) => {
+        text = text.replace(new RegExp(`\\{${paramKey}\\}`, 'g'), String(params[paramKey]))
+      })
+    }
+    return text
   }
 
   translatePage(root: Document | HTMLElement = document) {
@@ -184,7 +190,7 @@ export function useTranslation() {
   }, [])
 
   return {
-    t: (k: string) => manager.t(k),
+    t: (k: string, params?: Record<string, string | number>) => manager.t(k, params),
     lang,
     setLanguage: (l: Lang) => manager.setLanguage(l),
     manager,
