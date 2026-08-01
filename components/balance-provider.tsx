@@ -54,8 +54,13 @@ type BalanceContextValue = {
   history: HistoryEntry[]
   paymentInstructions: string
   isTopUpOpen: boolean
-  openTopUp: () => void
+  /** amount berilsa — TopUpModal ochilganda shu summa avtomatik tanlab qo'yiladi (masalan yetmayotgan farq). */
+  openTopUp: (amount?: number) => void
   closeTopUp: () => void
+  /** Gift yetarli mablag' bo'lmagani uchun to'xtatilgan bo'lsa — to'lov tasdiqlangach davom ettirish uchun saqlanadi. */
+  topUpAmountHint: number | null
+  pendingResume: (() => void) | null
+  setPendingResume: (fn: (() => void) | null) => void
   purchase: (details: PurchaseDetails) => Promise<ActionResult>
   topUpRequest: TopUpRequestInfo | null
   requestTopUp: (amount: number) => Promise<ActionResult>
@@ -252,13 +257,33 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
   /** Eski, o'qib bo'lmaydigan kod yo'llari uchun — mutatsiya qilmaydi. */
   const spend = useCallback((amount: number) => balance >= amount, [balance])
 
-  const openTopUp = useCallback(() => setIsTopUpOpen(true), [])
+  const [topUpAmountHint, setTopUpAmountHint] = useState<number | null>(null)
+  const [pendingResume, setPendingResumeState] = useState<(() => void) | null>(null)
+  const setPendingResume = useCallback((fn: (() => void) | null) => setPendingResumeState(() => fn), [])
+
+  const openTopUp = useCallback((amount?: number) => {
+    setTopUpAmountHint(amount && amount > 0 ? Math.ceil(amount) : null)
+    setIsTopUpOpen(true)
+  }, [])
   const closeTopUp = useCallback(() => {
     // DIQQAT: bu yerda topUpRequest'ni tozalamaymiz — agar hali "pending" bo'lsa,
     // fon rejimidagi tekshiruv (yuqoridagi useEffect) davom etishi kerak, aks holda
     // foydalanuvchi modalni yopib yuborsa, keyinroq kelgan tasdiqlash "yo'qolib qoladi".
     setIsTopUpOpen(false)
   }, [])
+
+  // To'lov tasdiqlangach (balans yetarli bo'lib qolganda) — to'xtatilgan xaridni
+  // avtomatik davom ettiramiz (masalan gift sotib olishda username so'rash ekrani).
+  useEffect(() => {
+    if (!pendingResume) return
+    if (topUpRequest && topUpRequest.status === 'approved') {
+      setIsTopUpOpen(false)
+      setTopUpAmountHint(null)
+      const resume = pendingResume
+      setPendingResumeState(null)
+      resume()
+    }
+  }, [topUpRequest, pendingResume])
 
   const value = useMemo(
     () => ({
@@ -271,6 +296,9 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
       isTopUpOpen,
       openTopUp,
       closeTopUp,
+      topUpAmountHint,
+      pendingResume,
+      setPendingResume,
       purchase,
       topUpRequest,
       requestTopUp,
@@ -289,6 +317,9 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
       isTopUpOpen,
       openTopUp,
       closeTopUp,
+      topUpAmountHint,
+      pendingResume,
+      setPendingResume,
       purchase,
       topUpRequest,
       requestTopUp,
