@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
 import { DEFAULT_SETTINGS, SettingsState, useAppSettings } from '@/lib/application-settings'
@@ -68,7 +68,7 @@ export default function SettingsPage() {
   const handleUpdate = (message: string, patch: Partial<SettingsState>) => {
     updateSettings(patch)
     notify(message)
-    addNotification(message, 'Sozlamalar yangilandi', { emoji: '🔔', color: '#38bdf8' })
+    addNotification(message, 'Sozlamalar yangilandi', { variant: 'info' })
   }
 
   if (!ready) {
@@ -340,8 +340,7 @@ export default function SettingsPage() {
                   updateSettings(DEFAULT_SETTINGS)
                   notify('Sozlamalar tiklandi')
                   addNotification('Sozlamalar tiklandi', 'Barcha sozlamalar tiklandi', {
-                    emoji: '♻️',
-                    color: '#fb7185',
+                    variant: 'warning',
                   })
                 }}
               >
