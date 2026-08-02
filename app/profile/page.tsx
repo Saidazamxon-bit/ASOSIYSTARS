@@ -79,23 +79,15 @@ export default function ProfilePage() {
     )
   }
 
-  const totalStars = history.reduce((sum, entry) => {
-    const productText = typeof entry.product === 'string' ? entry.product : ''
-    if (entry.type === 'stars' || /stars/i.test(productText)) {
-      const match = productText.match(/(\d+)\s*Stars/i)
-      if (match) return sum + Number(match[1])
-      return sum
-    }
-    return sum
-  }, 0)
-
-  const referralCount = history.filter((entry) => {
-    const productText = typeof entry.product === 'string' ? entry.product : ''
-    return entry.type === 'referral' || /referral/i.test(productText)
-  }).length
+  // Barcha vaqt uchun umumiy statistika — server tomonidan hisoblanadi
+  // (faqat oxirgi bir nechta tranzaksiyadan emas, balki bazadagi
+  // BARCHA tranzaksiyalar/buyurtmalar asosida).
+  const totalDeposited = profileUser?.totalDeposited ?? 0
+  const totalStars = profileUser?.totalStars ?? 0
+  const referralCount = profileUser?.referralCount ?? 0
 
   const stats = [
-    { label: 'Soliingan balans', value: formatUZS(balance), icon: TrendingUp },
+    { label: 'Soliingan balans', value: formatUZS(totalDeposited), icon: TrendingUp },
     { label: 'Soliingan Stars', value: `${totalStars}`, icon: Star },
     { label: 'Referal', value: `${referralCount}`, icon: Users },
   ]
