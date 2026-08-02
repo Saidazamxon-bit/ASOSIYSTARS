@@ -79,12 +79,12 @@ export default function ProfilePage() {
     )
   }
 
-  // Barcha vaqt uchun umumiy statistika — server tomonidan hisoblanadi
-  // (faqat oxirgi bir nechta tranzaksiyadan emas, balki bazadagi
-  // BARCHA tranzaksiyalar/buyurtmalar asosida).
-  const totalDeposited = profileUser?.totalDeposited ?? 0
-  const totalStars = profileUser?.totalStars ?? 0
-  const referralCount = profileUser?.referralCount ?? 0
+  // DIQQAT: profileUser EMAS — profileUser haqiqiy Telegramda ochilganda
+  // Telegram SDK obyekti bo'lib qoladi (undan totalDeposited/totalStars/
+  // referralCount kelmaydi). Bu maydonlar faqat backenddan kelgan `user`da bor.
+  const totalDeposited = Number(user?.totalDeposited ?? 0)
+  const totalStars = Number(user?.totalStars ?? 0)
+  const referralCount = Number(user?.referralCount ?? 0)
 
   const stats = [
     { label: 'Soliingan balans', value: formatUZS(totalDeposited), icon: TrendingUp },
