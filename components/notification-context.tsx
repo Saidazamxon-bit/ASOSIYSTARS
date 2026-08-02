@@ -128,7 +128,10 @@ function NotificationStack({
   onDismiss: (id: string) => void
 }) {
   return (
-    <div className="pointer-events-none fixed right-2 top-20 z-[100] flex w-[calc(100vw-32px)] max-w-[260px] flex-col gap-2 sm:right-4 sm:top-24 sm:max-w-[280px]">
+    <div
+      className="pointer-events-none fixed right-2 z-[100] flex w-[calc(100vw-32px)] max-w-[260px] flex-col gap-2 sm:right-4 sm:max-w-[280px]"
+      style={{ top: 'max(0.75rem, env(safe-area-inset-top, 0px))' }}
+    >
       <AnimatePresence initial={false}>
         {items.map((item) => {
           const style = item.variant ? VARIANT_STYLES[item.variant] : null
