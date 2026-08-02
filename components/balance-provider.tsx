@@ -44,6 +44,9 @@ export type UserProfile = {
   referralCode?: string
   balance?: number
   createdAt?: string
+  totalDeposited?: number
+  totalStars?: number
+  referralCount?: number
 }
 
 type BalanceContextValue = {
