@@ -64,14 +64,13 @@ export function TopUpModal() {
     setChecking(false)
     if (result === 'pending') {
       addNotification(
-        "Hali tekshirilmoqda...",
-        "To'lov ba'zan bir necha soniya kech tasdiqlanadi. Sahifani yopmang — tayyor bo'lishi bilan avtomatik xabar beramiz.",
-        { emoji: '⏳', color: '#fbbf24' },
+        "Hali tushmagan",
+        "To'lovingiz hali tizimga tushmadi. Bir necha soniya kutib, yana urinib ko'ring — sahifani yopmang.",
+        { variant: 'warning' },
       )
     } else if (result === null) {
       addNotification('Tekshirib bo\'lmadi', "Server bilan bog'lanishda xatolik yuz berdi, qayta urinib ko'ring", {
-        emoji: '⚠️',
-        color: '#f87171',
+        variant: 'error',
       })
     }
     // 'approved' va 'rejected' holatlari uchun modal o'zi tegishli ekranni ko'rsatadi
