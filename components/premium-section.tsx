@@ -15,7 +15,21 @@ import { AnimatedStar } from '@/components/animated-star'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://6a4cc7f182c08.xvest2.ru'
 
-type PremiumPlan = { key: string; name: string; price: number; months: 3 | 6 | 12 }
+// "Akkountga kirib" (login orqali) paketlar — buy bosilganda to'g'ridan-to'g'ri
+// @saidazaam ga tayyor matn bilan yo'naltiriladi, oddiy balans/xarid oqimi ishlamaydi.
+const TELEGRAM_LOGIN_CONTACT = 'saidazaam'
+
+type PremiumPlan = { key: string; name: string; price: number; months: 1 | 3 | 6 | 12 }
+
+function isLoginPlan(p: PremiumPlan) {
+  return p.key === '1m' || p.key === '12a' || /kirib/i.test(p.name)
+}
+
+function buildLoginContactLink(months: number) {
+  const label = months === 12 ? '12oylik' : '1oylik'
+  const text = `Assalomu alaykum men ${label} premium harid qilmoqchi edim`
+  return `https://t.me/${TELEGRAM_LOGIN_CONTACT}?text=${encodeURIComponent(text)}`
+}
 
 export function PremiumSection() {
   const { settings } = useAppSettings()
@@ -50,11 +64,13 @@ export function PremiumSection() {
         const pp = data?.catalog?.premium_plans || {}
         const list: PremiumPlan[] = Object.keys(pp).map((k) => {
           const parsedMonths = parseInt(k, 10)
-          const months = (parsedMonths === 3 || parsedMonths === 6 || parsedMonths === 12 ? parsedMonths : 12) as 3 | 6 | 12
+          const months = (
+            parsedMonths === 1 || parsedMonths === 3 || parsedMonths === 6 || parsedMonths === 12 ? parsedMonths : 12
+          ) as 1 | 3 | 6 | 12
           return { key: k, name: pp[k].name, price: pp[k].price, months }
         })
         // preserve order: try common ordering
-        const order = ['3m', '6m', '12m', '12a']
+        const order = ['1m', '3m', '6m', '12m', '12a']
         list.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key))
         setPlans(list)
         setPlansError(null)
@@ -146,6 +162,15 @@ export function PremiumSection() {
                         <Crown className="h-5 w-5" fill="currentColor" />
                       </div>
                       <div>
+                        {isLoginPlan(pkg) ? (
+                          <span className="mb-1 inline-block rounded-full bg-gradient-to-r from-fuchsia-500 to-purple-500 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+                            Akkountga kirib
+                          </span>
+                        ) : (
+                          <span className="mb-1 inline-block rounded-full border border-emerald-400/30 bg-emerald-400/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-300">
+                            Hadya orqali
+                          </span>
+                        )}
                         <div className="text-sm font-semibold text-white">{pkg.name}</div>
                         <div className="mt-0.5 text-[11px] text-white/45">Telegram Premium</div>
                       </div>
@@ -165,7 +190,7 @@ export function PremiumSection() {
         label="Premium"
         total={total}
         accent="violet"
-        disabled={!plan || total <= 0 || username.trim().length < 3}
+        disabled={!plan || (isLoginPlan(plan) ? false : total <= 0 || username.trim().length < 3)}
         productName={plan ? `${plan.months} months` : ''}
         action={
           <motion.button
@@ -173,7 +198,13 @@ export function PremiumSection() {
             whileTap={animationEnabled ? { scale: 0.95 } : undefined}
             whileHover={animationEnabled ? { y: -1, boxShadow: '0 16px 40px rgba(168,85,247,0.16)' } : undefined}
             onClick={async () => {
-              if (!plan || !username.trim() || total <= 0) return
+              if (!plan) return
+              if (isLoginPlan(plan)) {
+                playUIEvent('click')
+                window.open(buildLoginContactLink(plan.months), '_blank')
+                return
+              }
+              if (!username.trim() || total <= 0) return
               if (balance < total) {
                 setPurchaseError('USD balans yetarlik emas. BALANSDA muammo — admin bilan bog‘laning.')
                 playUIEvent('insufficient')
