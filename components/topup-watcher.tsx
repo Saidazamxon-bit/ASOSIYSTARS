@@ -23,9 +23,8 @@ export function TopUpWatcher() {
       notifiedIdRef.current !== topUpRequest.id
     ) {
       notifiedIdRef.current = topUpRequest.id
-      addNotification("To'lov tasdiqlandi!", `${formatUZS(topUpRequest.amount)} UZS hisobingizga tushdi`, {
-        emoji: '✅',
-        color: '#34d399',
+      addNotification("To'lov qabul qilindi!", `${formatUZS(topUpRequest.amount)} so'm hisobingizga tushdi ✅`, {
+        variant: 'success',
       })
     }
   }, [topUpRequest, addNotification])
