@@ -82,7 +82,7 @@ export function ProfileModal({ isOpen, onClose, username = 'User' }: ProfileModa
               </motion.button>
 
               <a
-                href="https://t.me/StarPayerSupportBot"
+                href="https://t.me/saidazaam"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full block"
