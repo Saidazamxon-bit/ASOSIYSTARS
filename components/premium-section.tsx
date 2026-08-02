@@ -25,9 +25,12 @@ function isLoginPlan(p: PremiumPlan) {
   return p.key === '1m' || p.key === '12a' || /kirib/i.test(p.name)
 }
 
-function buildLoginContactLink(months: number) {
-  const label = months === 12 ? '12oylik' : '1oylik'
-  const text = `Assalomu alaykum men ${label} premium harid qilmoqchi edim`
+function formatSom(amount: number) {
+  return `${String(Math.round(amount)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm`
+}
+
+function buildLoginContactLink(months: number, price: number) {
+  const text = `Assalomu alaykum! 😊\n🌟 Sizlardan ${months} oylik Telegram Premium xarid qilmoqchi edim.\n💰 Sizlarda narxi ${formatSom(price)} ekan. \nXarid qilmoqchi edim. 🤝`
   return `https://t.me/${TELEGRAM_LOGIN_CONTACT}?text=${encodeURIComponent(text)}`
 }
 
@@ -69,10 +72,16 @@ export function PremiumSection() {
           ) as 1 | 3 | 6 | 12
           return { key: k, name: pp[k].name, price: pp[k].price, months }
         })
-        // preserve order: try common ordering
-        const order = ['1m', '3m', '6m', '12m', '12a']
-        list.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key))
-        setPlans(list)
+        // Fixed layout (independent of admin panel key/order — only prices come from admin):
+        // "Akkountga kirib 1 oy" always first, "Akkountga kirib 12 oy" always last,
+        // gift ("Hadya orqali") plans sorted by months in between.
+        const loginFirst = list.find((p) => isLoginPlan(p) && p.months === 1)
+        const loginLast = list.find((p) => isLoginPlan(p) && p.months === 12)
+        const gifts = list
+          .filter((p) => p !== loginFirst && p !== loginLast)
+          .sort((a, b) => a.months - b.months)
+        const sorted = [loginFirst, ...gifts, loginLast].filter(Boolean) as PremiumPlan[]
+        setPlans(sorted)
         setPlansError(null)
       })
       .catch((err) => setPlansError(String(err)))
@@ -201,7 +210,7 @@ export function PremiumSection() {
               if (!plan) return
               if (isLoginPlan(plan)) {
                 playUIEvent('click')
-                window.open(buildLoginContactLink(plan.months), '_blank')
+                window.open(buildLoginContactLink(plan.months, plan.price), '_blank')
                 return
               }
               if (!username.trim() || total <= 0) return
