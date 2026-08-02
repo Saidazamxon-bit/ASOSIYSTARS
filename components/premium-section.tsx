@@ -30,7 +30,7 @@ function formatSom(amount: number) {
 }
 
 function buildLoginContactLink(months: number, price: number) {
-  const text = `Assalomu alaykum! 😊\n🌟 Sizlardan ${months} oylik Telegram Premium xarid qilmoqchi edim.\n💰 Sizlarda narxi ${formatSom(price)} ekan. \nXarid qilmoqchi edim. 🤝`
+  const text = `Assalomu alaykum! 😊\n🌟 Sizlardan ${months} oylik Telegram Premium xarid qilmoqchi edim.\n💰 Sizlarda narxi ${formatSom(price)} ekan`
   return `https://t.me/${TELEGRAM_LOGIN_CONTACT}?text=${encodeURIComponent(text)}`
 }
 
