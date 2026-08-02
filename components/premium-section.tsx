@@ -22,7 +22,7 @@ const TELEGRAM_LOGIN_CONTACT = 'saidazaam'
 type PremiumPlan = { key: string; name: string; price: number; months: 1 | 3 | 6 | 12 }
 
 function isLoginPlan(p: PremiumPlan) {
-  return p.key === '1m' || p.key === '12a' || /kirib/i.test(p.name)
+  return p.key === 'login-1m' || p.key === 'login-12m' || p.key === '1m' || p.key === '12a' || /kirib/i.test(p.name)
 }
 
 function formatSom(amount: number) {
@@ -33,6 +33,11 @@ function buildLoginContactLink(months: number, price: number) {
   const text = `Assalomu alaykum! 😊\n🌟 Sizlardan ${months} oylik Telegram Premium xarid qilmoqchi edim.\n💰 Sizlarda narxi ${formatSom(price)} ekan. \nXarid qilmoqchi edim. 🤝`
   return `https://t.me/${TELEGRAM_LOGIN_CONTACT}?text=${encodeURIComponent(text)}`
 }
+
+// "Akkountga kirib" paketlar — bazadan/admin paneldan olinmaydi, narxi va joyi
+// shu yerda qattiq belgilangan. O'zgartirish kerak bo'lsa faqat shu 2 qatorni tahrirlang.
+const LOGIN_ONE_MONTH: PremiumPlan = { key: 'login-1m', name: 'Akkountga kirib 1 oy', price: 45000, months: 1 }
+const LOGIN_TWELVE_MONTH: PremiumPlan = { key: 'login-12m', name: 'Akkountga kirib 12 oy', price: 290000, months: 12 }
 
 export function PremiumSection() {
   const { settings } = useAppSettings()
@@ -72,20 +77,23 @@ export function PremiumSection() {
           ) as 1 | 3 | 6 | 12
           return { key: k, name: pp[k].name, price: pp[k].price, months }
         })
-        // Fixed layout (independent of admin panel key/order — only prices come from admin):
-        // "Akkountga kirib 1 oy" always first, "Akkountga kirib 12 oy" always last,
-        // gift ("Hadya orqali") plans sorted by months in between.
-        const loginFirst = list.find((p) => isLoginPlan(p) && p.months === 1)
-        const loginLast = list.find((p) => isLoginPlan(p) && p.months === 12)
-        const gifts = list
-          .filter((p) => p !== loginFirst && p !== loginLast)
-          .sort((a, b) => a.months - b.months)
-        const sorted = [loginFirst, ...gifts, loginLast].filter(Boolean) as PremiumPlan[]
-        setPlans(sorted)
+        // Faqat "Hadya orqali" paketlar bazadan/admin paneldan keladi va oy soniga
+        // qarab tartiblanadi. "Akkountga kirib" ikkalasi bazadagi har qanday mos
+        // yozuvni almashtirib, doim qattiq belgilangan holda 1 oylik eng tepada,
+        // 12 oylik eng pastda turadi.
+        const gifts = list.filter((p) => !isLoginPlan(p)).sort((a, b) => a.months - b.months)
+        setPlans([LOGIN_ONE_MONTH, ...gifts, LOGIN_TWELVE_MONTH])
         setPlansError(null)
       })
-      .catch((err) => setPlansError(String(err)))
-      .finally(() => setPlansLoading(false))
+      .catch((err) => {
+        if (!mounted) return
+        // Baza/admin panel bilan bog'lanib bo'lmasa ham, login paketlar doim ko'rinadi.
+        setPlans([LOGIN_ONE_MONTH, LOGIN_TWELVE_MONTH])
+        setPlansError(String(err))
+      })
+      .finally(() => {
+        if (mounted) setPlansLoading(false)
+      })
     return () => {
       mounted = false
     }
@@ -141,10 +149,13 @@ export function PremiumSection() {
         <div className="flex flex-col gap-2.5">
           {plansLoading ? (
             <div className="p-4 text-sm text-white/60">Narxlar yuklanmoqda...</div>
-          ) : plansError ? (
-            <div className="p-4 text-sm text-red-400">Xatolik: {plansError}</div>
           ) : (
             <AnimatePresence initial={false}>
+              {plansError ? (
+                <div className="mb-1 rounded-[16px] border border-red-400/20 bg-red-400/10 p-3 text-xs text-red-300">
+                  Hadya orqali paketlarni yuklab bo'lmadi, Akkountga kirib paketlar ko'rsatilmoqda.
+                </div>
+              ) : null}
               {plans.map((pkg, i) => {
                 const active = selected === i
                 return (
