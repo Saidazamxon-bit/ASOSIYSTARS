@@ -2,6 +2,9 @@
 
 import * as React from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { CheckCircle2, AlertTriangle, Clock3, Info, X } from 'lucide-react'
+
+export type NotificationVariant = 'success' | 'error' | 'warning' | 'info'
 
 export type NotificationItem = {
   id: string
@@ -9,6 +12,7 @@ export type NotificationItem = {
   description?: string
   emoji?: string
   color?: string
+  variant?: NotificationVariant
   time: string
 }
 
@@ -16,7 +20,7 @@ type NotificationsContextValue = {
   addNotification: (
     title: string,
     description?: string,
-    opts?: { emoji?: string; color?: string }
+    opts?: { emoji?: string; color?: string; variant?: NotificationVariant }
   ) => void
 }
 
@@ -25,11 +29,15 @@ const NotificationsContext = React.createContext<NotificationsContextValue | nul
 export function NotificationsProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = React.useState<NotificationItem[]>([])
 
+  const removeNotification = React.useCallback((id: string) => {
+    setItems((prev) => prev.filter((item) => item.id !== id))
+  }, [])
+
   const addNotification = React.useCallback(
     (
       title: string,
       description?: string,
-      opts?: { emoji?: string; color?: string }
+      opts?: { emoji?: string; color?: string; variant?: NotificationVariant }
     ) => {
       const id = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID()
@@ -45,8 +53,9 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
         id,
         title,
         description,
-        emoji: opts?.emoji ?? '✨',
-        color: opts?.color ?? '#22c55e',
+        emoji: opts?.emoji,
+        color: opts?.color,
+        variant: opts?.variant,
         time,
       }
 
@@ -54,7 +63,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
 
       window.setTimeout(() => {
         setItems((prev) => prev.filter((item) => item.id !== id))
-      }, 4200)
+      }, 5000)
     },
     [],
   )
@@ -64,7 +73,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   return (
     <NotificationsContext.Provider value={value}>
       {children}
-      <NotificationStack items={items} />
+      <NotificationStack items={items} onDismiss={removeNotification} />
     </NotificationsContext.Provider>
   )
 }
@@ -75,37 +84,106 @@ export function useNotifications() {
   return ctx
 }
 
-function NotificationStack({ items }: { items: NotificationItem[] }) {
+// Har bir variant uchun tayyor uslub — ikonka, ranglar (loyihaning mavjud
+// "success"/"destructive"/"gold" ranglariga mos keladi).
+const VARIANT_STYLES: Record<
+  NotificationVariant,
+  { Icon: typeof CheckCircle2; border: string; tint: string; iconWrap: string; iconColor: string }
+> = {
+  success: {
+    Icon: CheckCircle2,
+    border: 'border-success/40',
+    tint: 'bg-success/10',
+    iconWrap: 'bg-success/15',
+    iconColor: 'text-success',
+  },
+  error: {
+    Icon: AlertTriangle,
+    border: 'border-destructive/40',
+    tint: 'bg-destructive/10',
+    iconWrap: 'bg-destructive/15',
+    iconColor: 'text-destructive',
+  },
+  warning: {
+    Icon: Clock3,
+    border: 'border-gold/40',
+    tint: 'bg-gold/10',
+    iconWrap: 'bg-gold/15',
+    iconColor: 'text-gold',
+  },
+  info: {
+    Icon: Info,
+    border: 'border-sky-400/40',
+    tint: 'bg-sky-400/10',
+    iconWrap: 'bg-sky-400/15',
+    iconColor: 'text-sky-400',
+  },
+}
+
+function NotificationStack({
+  items,
+  onDismiss,
+}: {
+  items: NotificationItem[]
+  onDismiss: (id: string) => void
+}) {
   return (
-    <div className="pointer-events-none fixed right-4 top-24 z-[100] flex w-full max-w-sm flex-col gap-3 px-2">
+    <div className="pointer-events-none fixed inset-x-3 top-24 z-[100] mx-auto flex w-full max-w-sm flex-col gap-2.5 sm:inset-x-auto sm:right-4">
       <AnimatePresence initial={false}>
-        {items.map((item) => (
-          <motion.div
-            key={item.id}
-            layout
-            initial={{ opacity: 0, x: 20, scale: 0.97 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 20, scale: 0.98 }}
-            transition={{ duration: 0.18, ease: 'easeOut' }}
-            className="pointer-events-auto overflow-hidden rounded-3xl border bg-slate-950/95 p-3 shadow-2xl shadow-black/20 backdrop-blur-xl"
-            style={{ borderColor: item.color }}
-          >
-            <div className="flex items-start gap-3">
-              <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl bg-white/5 text-lg">
-                {item.emoji}
-              </div>
-              <div className="min-w-0 space-y-1">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="truncate text-sm font-semibold text-white">{item.title}</p>
-                  <span className="text-[11px] text-slate-400">{item.time}</span>
+        {items.map((item) => {
+          const style = item.variant ? VARIANT_STYLES[item.variant] : null
+          const Icon = style?.Icon
+
+          return (
+            <motion.div
+              key={item.id}
+              layout
+              initial={{ opacity: 0, y: -14, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.98 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className={`group pointer-events-auto relative overflow-hidden rounded-2xl border p-3 pr-9 shadow-2xl shadow-black/30 backdrop-blur-xl ${
+                style ? `${style.border} ${style.tint}` : 'border-border bg-slate-950/95'
+              }`}
+              style={!style && item.color ? { borderColor: item.color } : undefined}
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className={`mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl text-base ${
+                    style ? style.iconWrap : 'bg-white/5'
+                  }`}
+                >
+                  {style && Icon ? (
+                    <Icon className={`size-4.5 ${style.iconColor}`} strokeWidth={2.2} aria-hidden="true" />
+                  ) : (
+                    <span>{item.emoji ?? '✨'}</span>
+                  )}
                 </div>
-                {item.description ? (
-                  <p className="truncate text-xs text-slate-300">{item.description}</p>
-                ) : null}
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-sm font-semibold text-white">{item.title}</p>
+                    <span className="shrink-0 text-[10px] text-slate-400">{item.time}</span>
+                  </div>
+                  {item.description ? (
+                    <p className="text-xs leading-relaxed text-slate-300">{item.description}</p>
+                  ) : null}
+                </div>
               </div>
-            </div>
-          </motion.div>
-        ))}
+
+              <button
+                type="button"
+                onClick={() => onDismiss(item.id)}
+                aria-label="Yopish"
+                data-disable-sound="true"
+                className={`absolute right-2 top-2 flex size-6 items-center justify-center rounded-md border opacity-40 transition-opacity hover:opacity-100 ${
+                  style ? `${style.border} ${style.iconColor}` : 'border-border text-slate-400'
+                }`}
+              >
+                <X className="size-3.5" strokeWidth={2.2} aria-hidden="true" />
+              </button>
+            </motion.div>
+          )
+        })}
       </AnimatePresence>
     </div>
   )
