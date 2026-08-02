@@ -26,7 +26,7 @@ import { useTranslation } from '@/lib/languageManager'
 const menuItems = [
   { href: '/rating', label: 'Top 10 reyting', icon: Trophy },
   { href: '/settings', label: 'Settings', icon: Settings },
-  { href: 'https://t.me/StarPayerSupportBot', label: 'Help', icon: HelpCircle },
+  { href: 'https://t.me/saidazaam', label: 'Help', icon: HelpCircle },
 ]
 
 export default function ProfilePage() {
