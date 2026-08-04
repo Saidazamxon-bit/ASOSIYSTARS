@@ -317,7 +317,7 @@ export default function ProfilePage() {
           transition={{ delay: 0.32, duration: 0.45 }}
           className="mt-8 text-center"
         >
-          <p className="text-[11px] uppercase tracking-[0.3em] text-white/35">ULTRA v1.0.0</p>
+          <p className="text-[11px] uppercase tracking-[0.3em] text-white/35">ULTRA v1.5.3</p>
           <p className="mt-1 text-xs text-white/30">Built for a premium mobile feel</p>
         </motion.div>
       </main>
