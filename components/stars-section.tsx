@@ -4,13 +4,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { ChevronDown, Sparkles, Star, Zap } from 'lucide-react'
 import { useAppSettings, formatCurrency } from '@/lib/application-settings'
-import { playUIEvent } from '@/lib/sounds'
+import { playUIEvent, playTushdiSound } from '@/lib/sounds'
 import { UsernameField } from '@/components/username-field'
 import { PurchaseBar } from '@/components/purchase-bar'
 import { useBalance } from '@/components/balance-provider'
 import { useNotifications } from '@/components/notification-context'
 import { useTranslation } from '@/lib/languageManager'
-import { starstgClient } from '@/lib/starstg-client'
+import { starstgClient, pollStarstgOrderStatus } from '@/lib/starstg-client'
 import { AnimatedStar } from '@/components/animated-star'
 
 const MIN_STARS = 50
@@ -22,7 +22,7 @@ type StarsPackage = { stars: number; price: number; bonus?: string }
 
 export function StarsSection() {
   const { settings } = useAppSettings()
-  const { balance, purchase, openTopUp, user } = useBalance()
+  const { balance, purchase, openTopUp, user, refresh } = useBalance()
   const { addNotification } = useNotifications()
   const { t } = useTranslation() as any
   const [starRate, setStarRate] = useState<number | null>(null)
@@ -298,7 +298,7 @@ export function StarsSection() {
 
       {sentToStars && sentStars ? (
         <div className="rounded-[20px] border border-emerald-400/20 bg-emerald-400/10 p-3 text-sm font-semibold text-emerald-200">
-          {`Sent ${sentStars} Stars to ${sentToStars}`}
+          {`✅ ${sentStars} Stars — @${sentToStars} akkauntiga tashlab berildi`}
         </div>
       ) : null}
 
@@ -359,39 +359,93 @@ export function StarsSection() {
                     onClick={async () => {
                       setSubmitting(true)
                       setPurchaseError(null)
+                      const starsToSend = customCount > 0 ? customCount : selected !== null ? packages[selected]?.stars ?? 0 : 0
+                      const targetUsername = username.trim()
+
+                      // 1) Avval bizning tizimimizda buyurtma ochamiz — shu qadamda
+                      // balans darhol yechiladi va buyurtma "pending" holatda saqlanadi.
+                      // Shu bilan pul harakati doim bizning DB'da qayd etilgan bo'ladi,
+                      // StarsTG javobidan qat'iy nazar.
+                      const order = await purchase({
+                        category: 'stars',
+                        productKey: customCount > 0 ? undefined : String(packages[selected!]?.stars ?? ''),
+                        customStars: customCount > 0 ? customCount : undefined,
+                        targetUsername,
+                        amount: total,
+                        productName: selectedPackage,
+                      })
+
+                      if (!order.success || !order.orderId) {
+                        setSubmitting(false)
+                        playUIEvent('insufficient')
+                        setPurchaseError(order.error || 'Buyurtma ochilmadi')
+                        return
+                      }
+
+                      // 2) Endi StarsTG'dan haqiqiy yetkazishni so'raymiz.
+                      let finalStatus: 'completed' | 'failed' = 'failed'
+                      let failReason = ''
                       try {
-                        const starsToSend = customCount > 0 ? customCount : selected !== null ? packages[selected]?.stars ?? 0 : 0
-                        const idempotencyKey = `stars-${username}-${starsToSend}-${Date.now()}`
+                        const idempotencyKey = `order-${order.orderId}`
                         const result = await starstgClient.purchaseStars({
-                          username: username.trim(),
+                          username: targetUsername,
                           stars: starsToSend,
                           idempotency_key: idempotencyKey,
                         })
-                        setSubmitting(false)
-                        if (result.success) {
-                          playUIEvent('success')
-                          setConfirmingStars(false)
-                          setSentToStars(username.trim())
-                          setSentStars(starsToSend)
-                          setTimeout(() => {
-                            setSentToStars(null)
-                            setSentStars(null)
-                          }, 4000)
+                        if (result.success && result.status === 'completed') {
+                          finalStatus = 'completed'
+                        } else if (result.success && result.status === 'processing') {
+                          // Darhol javob kelmadi — natija tayyor bo'lguncha kutamiz,
+                          // shu paytda foydalanuvchiga hech qachon soxta "tushdi" ko'rsatilmaydi.
+                          finalStatus = await pollStarstgOrderStatus(result.order_id)
                         } else {
-                          playUIEvent('insufficient')
-                          const errorText = result.error?.toLowerCase().includes('balan') || result.error?.toLowerCase().includes('insufficient')
-                            ? 'USD balans yetarlik emas. BALANSDA muammo — admin bilan bog‘laning.'
-                            : result.error || 'Purchase failed'
-                          setPurchaseError(errorText)
+                          failReason = result.error || 'StarsTG xatolik qaytardi'
                         }
                       } catch (err) {
-                        setSubmitting(false)
+                        failReason = String(err).replace('Error: ', '')
+                      }
+
+                      // 3) Yakuniy holatni bizning backendga qaytaramiz — u orderni
+                      // "fulfilled" (pul balансda qoladi) yoki "failed" (pul avtomatik
+                      // qaytariladi) qilib yopadi.
+                      try {
+                        await fetch('/api/orders/confirm', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            orderId: order.orderId,
+                            status: finalStatus === 'completed' ? 'fulfilled' : 'failed',
+                            deliveredName: foundUser?.name,
+                            reason: failReason,
+                          }),
+                        })
+                      } catch {
+                        // tarmoq xatosi bo'lsa ham quyida balansni yangilaymiz —
+                        // admin panelda buyurtma "pending" qolib ko'rinadi va qo'lda hal qilinishi mumkin
+                      }
+
+                      await refresh()
+                      setSubmitting(false)
+
+                      if (finalStatus === 'completed') {
+                        playTushdiSound()
+                        setConfirmingStars(false)
+                        setFoundUser(null)
+                        setSentToStars(targetUsername)
+                        setSentStars(starsToSend)
+                        addNotification(
+                          'Yetkazib berildi ✅',
+                          `${starsToSend} Stars — ${foundUser?.name ? `${foundUser.name} (@${targetUsername})` : `@${targetUsername}`} akkauntiga tashlab berildi.`,
+                          { emoji: '⭐', color: '#22c55e' },
+                        )
+                        setTimeout(() => {
+                          setSentToStars(null)
+                          setSentStars(null)
+                        }, 4000)
+                      } else {
                         playUIEvent('insufficient')
-                        const message = String(err).replace('Error: ', '')
                         setPurchaseError(
-                          message.toLowerCase().includes('balan') || message.toLowerCase().includes('insufficient')
-                            ? 'USD balans yetarlik emas. BALANSDA muammo — admin bilan bog‘laning.'
-                            : message,
+                          "Yetkazib berishda xatolik yuz berdi. To'langan mablag' balansingizga qaytarildi.",
                         )
                       }
                     }}

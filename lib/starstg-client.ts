@@ -129,3 +129,34 @@ export const starstgClient = {
     })
   },
 }
+
+/**
+ * purchase-stars / purchase-premium javobi "processing" bo'lsa, haqiqiy
+ * natija ma'lum bo'lguncha shu yordamchi bilan kutamiz — shu orqali
+ * "loadingdan keyin darhol tushdi deb chiqib, keyin balans qaytib qolish"
+ * muammosi oldini oladi: yakuniy holat aniq bo'lgunga qadar hech narsa
+ * "yetkazildi" deb ko'rsatilmaydi.
+ */
+export async function pollStarstgOrderStatus(
+  orderId: number | string,
+  { attempts = 15, intervalMs = 3000 }: { attempts?: number; intervalMs?: number } = {},
+): Promise<'completed' | 'failed'> {
+  for (let i = 0; i < attempts; i++) {
+    await new Promise((resolve) => setTimeout(resolve, intervalMs))
+    try {
+      const res = await fetch(`/api/starstg/order-status?order_id=${encodeURIComponent(String(orderId))}`, {
+        cache: 'no-store',
+      })
+      const data = await res.json().catch(() => null)
+      const status = data?.status
+      if (status === 'completed') return 'completed'
+      if (status === 'failed') return 'failed'
+      // status === 'processing' bo'lsa — davom etamiz
+    } catch {
+      // vaqtincha tarmoq xatosi — keyingi urinishda davom etamiz
+    }
+  }
+  // Belgilangan urinishlar tugadi — natija noaniq, xavfsiz tomonga
+  // (pulni qaytarish) og'amiz, "tushdi" deb yolg'on ko'rsatmaymiz.
+  return 'failed'
+}

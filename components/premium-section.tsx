@@ -6,11 +6,11 @@ import { Crown, Zap } from 'lucide-react'
 import { useAppSettings, formatCurrency } from '@/lib/application-settings'
 import { useBalance } from '@/components/balance-provider'
 import { useNotifications } from '@/components/notification-context'
-import { playUIEvent } from '@/lib/sounds'
+import { playUIEvent, playTushdiSound } from '@/lib/sounds'
 import { UsernameField } from '@/components/username-field'
 import { PurchaseBar } from '@/components/purchase-bar'
 import { useTranslation } from '@/lib/languageManager'
-import { starstgClient } from '@/lib/starstg-client'
+import { starstgClient, pollStarstgOrderStatus } from '@/lib/starstg-client'
 import { AnimatedStar } from '@/components/animated-star'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://6a4cc7f182c08.xvest2.ru'
@@ -42,7 +42,7 @@ const LOGIN_TWELVE_MONTH: PremiumPlan = { key: 'login-12m', name: 'Akkountga kir
 export function PremiumSection() {
   const { settings } = useAppSettings()
   const { t } = useTranslation() as any
-  const { user, balance } = useBalance()
+  const { user, balance, purchase, refresh } = useBalance()
   const { addNotification } = useNotifications()
   const [username, setUsername] = useState('')
   const [plans, setPlans] = useState<PremiumPlan[]>([])
@@ -266,7 +266,7 @@ export function PremiumSection() {
 
       {sentToPremium ? (
         <div className="rounded-[20px] border border-emerald-400/20 bg-emerald-400/10 p-3 text-sm font-semibold text-emerald-200">
-          {`Sent ${plan?.months} months Premium to ${sentToPremium}`}
+          {`✅ ${plan?.months} oylik Premium — @${sentToPremium} akkauntiga tashlab berildi`}
         </div>
       ) : null}
 
@@ -325,35 +325,83 @@ export function PremiumSection() {
                       if (!plan) return
                       setSubmitting(true)
                       setPurchaseError(null)
+                      const targetUsername = username.trim()
+                      const months = plan.months
+
+                      // 1) Bizning tizimimizda buyurtma ochamiz — balans darhol
+                      // yechiladi va buyurtma "pending" holatda qayd etiladi.
+                      const order = await purchase({
+                        category: 'premium',
+                        productKey: plan.key,
+                        targetUsername,
+                        amount: plan.price,
+                        productName: plan.name,
+                      })
+
+                      if (!order.success || !order.orderId) {
+                        setSubmitting(false)
+                        playUIEvent('insufficient')
+                        setPurchaseError(order.error || 'Buyurtma ochilmadi')
+                        return
+                      }
+
+                      // 2) StarsTG'dan haqiqiy yetkazishni so'raymiz.
+                      let finalStatus: 'completed' | 'failed' = 'failed'
+                      let failReason = ''
                       try {
-                        const months = plan.months
-                        const idempotencyKey = `premium-${username}-${months}-${Date.now()}`
+                        const idempotencyKey = `order-${order.orderId}`
                         const result = await starstgClient.purchasePremium({
-                          username: username.trim(),
+                          username: targetUsername,
                           months,
                           idempotency_key: idempotencyKey,
                         })
-                        setSubmitting(false)
-                        if (result.success) {
-                          playUIEvent('success')
-                          setConfirmingPremium(false)
-                          setSentToPremium(username.trim())
-                          setTimeout(() => setSentToPremium(null), 4000)
+                        if (result.success && result.status === 'completed') {
+                          finalStatus = 'completed'
+                        } else if (result.success && result.status === 'processing') {
+                          finalStatus = await pollStarstgOrderStatus(result.order_id)
                         } else {
-                          playUIEvent('insufficient')
-                          const errorText = result.error?.toLowerCase().includes('balan') || result.error?.toLowerCase().includes('insufficient')
-                            ? 'USD balans yetarlik emas. BALANSDA muammo — admin bilan bog‘laning.'
-                            : result.error || 'Purchase failed'
-                          setPurchaseError(errorText)
+                          failReason = result.error || 'StarsTG xatolik qaytardi'
                         }
                       } catch (err) {
-                        setSubmitting(false)
+                        failReason = String(err).replace('Error: ', '')
+                      }
+
+                      // 3) Yakuniy holatni backendga qaytaramiz — "fulfilled" bo'lsa
+                      // pul balансda qoladi va "tushdi" xabari ketadi, "failed"
+                      // bo'lsa pul avtomatik qaytariladi.
+                      try {
+                        await fetch('/api/orders/confirm', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            orderId: order.orderId,
+                            status: finalStatus === 'completed' ? 'fulfilled' : 'failed',
+                            deliveredName: foundUser?.name,
+                            reason: failReason,
+                          }),
+                        })
+                      } catch {
+                        // tarmoq xatosi — buyurtma admin panelda "pending" qolib ko'rinadi
+                      }
+
+                      await refresh()
+                      setSubmitting(false)
+
+                      if (finalStatus === 'completed') {
+                        playTushdiSound()
+                        setConfirmingPremium(false)
+                        setFoundUser(null)
+                        setSentToPremium(targetUsername)
+                        addNotification(
+                          'Yetkazib berildi ✅',
+                          `${months} oylik Premium — ${foundUser?.name ? `${foundUser.name} (@${targetUsername})` : `@${targetUsername}`} akkauntiga tashlab berildi.`,
+                          { emoji: '💎', color: '#22c55e' },
+                        )
+                        setTimeout(() => setSentToPremium(null), 4000)
+                      } else {
                         playUIEvent('insufficient')
-                        const message = String(err).replace('Error: ', '')
                         setPurchaseError(
-                          message.toLowerCase().includes('balan') || message.toLowerCase().includes('insufficient')
-                            ? 'USD balans yetarlik emas. BALANSDA muammo — admin bilan bog‘laning.'
-                            : message,
+                          "Yetkazib berishda xatolik yuz berdi. To'langan mablag' balansingizga qaytarildi.",
                         )
                       }
                     }}

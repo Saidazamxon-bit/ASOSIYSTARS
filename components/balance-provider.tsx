@@ -21,7 +21,7 @@ export type PurchaseDetails = {
   productName: string
 }
 
-export type ActionResult = { success: boolean; error?: string }
+export type ActionResult = { success: boolean; error?: string; orderId?: number }
 
 export type TopUpRequestInfo = {
   id: number
@@ -152,7 +152,7 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
           },
           ...prev,
         ])
-        return { success: true }
+        return { success: true, orderId: res.order.id }
       } catch (err) {
         return { success: false, error: err instanceof ApiError ? err.message : "Xarid amalga oshmadi" }
       }

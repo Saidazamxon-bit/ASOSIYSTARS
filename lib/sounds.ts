@@ -20,6 +20,22 @@ export function playClickSound(preset: string | undefined, volume = 0.7) {
   }
 }
 
+// Buyurtma haqiqatan ham yetkazib berilgani (StarsTG'dan "completed" javobi
+// kelib, backend orderni "fulfilled" deb belgilagach) tasdiqlangandagina
+// chalinadigan maxsus ovoz. Boshqa preset'lardan farqli — foydalanuvchi
+// sozlamasiga bog'liq emas, doim shu fayl ("tushdi.mp3") ishlatiladi.
+export function playTushdiSound(volume = 0.85) {
+  try {
+    const audio = new Audio('/sounds/tushdi.mp3')
+    audio.preload = 'auto'
+    audio.volume = Math.max(0, Math.min(1, volume))
+    audio.currentTime = 0
+    void audio.play()
+  } catch (e) {
+    // ignore playback errors
+  }
+}
+
 // Play small UI event sounds (success, error, click, notify, insufficient)
 export function playUIEvent(eventName: string, overrideVolume?: number) {
   try {

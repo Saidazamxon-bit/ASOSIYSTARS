@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Users, Wallet, TrendingUp, ShieldAlert, UserX, UserCheck } from 'lucide-react'
+import { Users, Wallet, TrendingUp, ShieldAlert, UserX, UserCheck, Star, Crown, Gift } from 'lucide-react'
 
 type Stats = {
   totalUsers: number
@@ -12,6 +12,12 @@ type Stats = {
   transactions24h: number
   volume24h: number
   highRiskUsers: number
+  starsSold?: number
+  premiumSold?: number
+  giftsSold?: number
+  totalRevenue?: number
+  pendingOrders?: number
+  pendingTopups?: number
 }
 
 function formatSum(n: number) {
@@ -71,6 +77,44 @@ export function AdminStats({ refreshKey }: { refreshKey: number }) {
         </div>
         <div className="mt-3 text-2xl font-bold text-foreground">
           {loading ? '—' : `${formatSum(stats?.volume24h ?? 0)} · ${stats?.transactions24h ?? 0} ta tranzaksiya`}
+        </div>
+      </div>
+
+      {/* Sotib olingan Stars/Premium/Gift — haqiqiy `orders` jadvalidan (monitoring shu yerda ko'rinadi) */}
+      <div className="rounded-3xl border border-border bg-card p-5">
+        <div className="flex items-center gap-2 text-[#FFD54A]">
+          <Star className="size-5" aria-hidden="true" />
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sotilgan Stars</span>
+        </div>
+        <div className="mt-3 text-2xl font-bold text-foreground">
+          {loading ? '—' : (stats?.starsSold ?? 0).toLocaleString('uz-UZ')}
+        </div>
+      </div>
+      <div className="rounded-3xl border border-border bg-card p-5">
+        <div className="flex items-center gap-2 text-purple-400">
+          <Crown className="size-5" aria-hidden="true" />
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sotilgan Premium</span>
+        </div>
+        <div className="mt-3 text-2xl font-bold text-foreground">
+          {loading ? '—' : (stats?.premiumSold ?? 0).toLocaleString('uz-UZ')}
+        </div>
+      </div>
+      <div className="rounded-3xl border border-border bg-card p-5">
+        <div className="flex items-center gap-2 text-pink-400">
+          <Gift className="size-5" aria-hidden="true" />
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sotilgan Giftlar</span>
+        </div>
+        <div className="mt-3 text-2xl font-bold text-foreground">
+          {loading ? '—' : (stats?.giftsSold ?? 0).toLocaleString('uz-UZ')}
+        </div>
+      </div>
+      <div className="rounded-3xl border border-border bg-card p-5">
+        <div className="flex items-center gap-2 text-emerald-400">
+          <Wallet className="size-5" aria-hidden="true" />
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Jami xarid aylanmasi</span>
+        </div>
+        <div className="mt-3 text-2xl font-bold text-foreground">
+          {loading ? '—' : formatSum(stats?.totalRevenue ?? 0)}
         </div>
       </div>
     </div>
