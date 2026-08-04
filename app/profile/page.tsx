@@ -318,7 +318,7 @@ export default function ProfilePage() {
           className="mt-8 text-center"
         >
           <p className="text-[11px] uppercase tracking-[0.3em] text-white/35">ULTRA v1.5.3</p>
-          <p className="mt-1 text-xs text-white/30">Built for a premium mobile feel</p>
+          <p className="mt-1 text-xs text-white/30">Premium mobil muhit uchun yaratilgan</p>
         </motion.div>
       </main>
     </div>
