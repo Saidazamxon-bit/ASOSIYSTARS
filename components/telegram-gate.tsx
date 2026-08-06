@@ -3,33 +3,35 @@
 import { useEffect, useState } from 'react'
 import { TelegramAccessScreen } from '@/components/telegram-access-screen'
 
-function isTelegramWebAppAvailable() {
+const NATIVE_TELEGRAM_PLATFORMS = ['android', 'ios', 'mac', 'windows', 'desktop', 'tdesktop']
+
+function isNativeTelegramApp() {
   if (typeof window === 'undefined') return false
+
+  const host = window.location.hostname.toLowerCase()
+  if (host === 'web.telegram.org' || host === 'webk.telegram.org' || host.includes('.web.telegram.org')) {
+    return false
+  }
 
   const tg = (window as any).Telegram?.WebApp
   if (!tg) return false
 
-  const host = window.location.hostname.toLowerCase()
-  if (host === 'web.telegram.org' || host === 'webk.telegram.org' || host.endsWith('.web.telegram.org')) {
-    return false
-  }
-
   const platform = typeof tg.platform === 'string' ? tg.platform.toLowerCase() : ''
-  const isNativeTelegramPlatform = ['android', 'ios', 'mac', 'windows', 'desktop', 'tdesktop'].includes(platform)
-  if (!isNativeTelegramPlatform) return false
+  if (platform) {
+    const isNative = NATIVE_TELEGRAM_PLATFORMS.some((entry) => platform.includes(entry))
+    if (!isNative) return false
+  }
 
   const hasInitData = typeof tg.initData === 'string' && tg.initData.length > 0
   const hasUnsafeUser = Boolean(tg.initDataUnsafe && tg.initDataUnsafe.user)
-  const hasAnyInit = hasInitData || hasUnsafeUser
-
-  return hasAnyInit
+  return hasInitData || hasUnsafeUser
 }
 
 export function TelegramGate({ children }: { children: React.ReactNode }) {
   const [accessState, setAccessState] = useState<'checking' | 'allowed' | 'blocked'>('checking')
 
   useEffect(() => {
-    if (isTelegramWebAppAvailable()) {
+    if (isNativeTelegramApp()) {
       setAccessState('allowed')
       return
     }

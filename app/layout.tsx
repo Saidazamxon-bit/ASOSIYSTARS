@@ -5,6 +5,7 @@ import Script from 'next/script'
 import { BalanceProvider } from '@/components/balance-provider'
 import { SettingsProvider } from '@/lib/application-settings'
 import { AppShell } from '@/components/app-shell'
+import { TelegramGate } from '@/components/telegram-gate'
 import './globals.css'
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist' })
@@ -41,9 +42,11 @@ export default function RootLayout({
         <div className="ultra-bg" aria-hidden="true" />
         <div className="ultra-grid" aria-hidden="true" />
         <SettingsProvider>
-          <BalanceProvider>
-            <AppShell>{children}</AppShell>
-          </BalanceProvider>
+          <TelegramGate>
+            <BalanceProvider>
+              <AppShell>{children}</AppShell>
+            </BalanceProvider>
+          </TelegramGate>
         </SettingsProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
