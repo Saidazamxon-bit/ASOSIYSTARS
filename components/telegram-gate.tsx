@@ -9,6 +9,15 @@ function isTelegramWebAppAvailable() {
   const tg = (window as any).Telegram?.WebApp
   if (!tg) return false
 
+  const host = window.location.hostname.toLowerCase()
+  if (host === 'web.telegram.org' || host === 'webk.telegram.org' || host.endsWith('.web.telegram.org')) {
+    return false
+  }
+
+  const platform = typeof tg.platform === 'string' ? tg.platform.toLowerCase() : ''
+  const isNativeTelegramPlatform = ['android', 'ios', 'mac', 'windows', 'desktop', 'tdesktop'].includes(platform)
+  if (!isNativeTelegramPlatform) return false
+
   const hasInitData = typeof tg.initData === 'string' && tg.initData.length > 0
   const hasUnsafeUser = Boolean(tg.initDataUnsafe && tg.initDataUnsafe.user)
   const hasAnyInit = hasInitData || hasUnsafeUser
