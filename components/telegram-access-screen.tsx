@@ -26,9 +26,9 @@ export function TelegramAccessScreen() {
   return (
     <div className="min-h-screen bg-black text-white">
       <div className="flex min-h-screen flex-col items-center justify-center px-5 py-10 text-center">
-        <div className="relative mb-8 w-full max-w-xl overflow-hidden rounded-[28px] border border-white/10 bg-zinc-950 shadow-[0_40px_120px_rgba(0,0,0,0.55)]">
+        <div className="relative mb-8 w-full max-w-lg overflow-hidden rounded-[28px] border border-white/10 bg-zinc-950 shadow-[0_40px_120px_rgba(0,0,0,0.55)] mx-auto">
           <video
-            className="h-[320px] w-full object-cover"
+            className="h-[260px] w-full object-cover"
             src="/video/StarDuck_by_TgEmodziBot_AgADa2wAAt0nqEs.mp4"
             poster="/placeholder.jpg"
             autoPlay
