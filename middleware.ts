@@ -8,14 +8,8 @@ function isWebTelegramHost(hostname: string) {
   return TELEGRAM_WEB_HOSTS.some((host) => normalized === host || normalized.endsWith(`.${host}`))
 }
 
-function isTelegramUserAgent(agent: string | null) {
-  if (!agent) return false
-  return /telegram/i.test(agent)
-}
-
 export function middleware(req: NextRequest) {
   const { pathname, searchParams, hostname } = req.nextUrl
-  const ua = req.headers.get('user-agent') || ''
 
   const isLocalhost = hostname === 'localhost' || hostname.startsWith('127.') || hostname === '::1'
 
@@ -23,11 +17,7 @@ export function middleware(req: NextRequest) {
     return new NextResponse('Not Found', { status: 404 })
   }
 
-  if (!isLocalhost && !isTelegramUserAgent(ua)) {
-    return new NextResponse('Not Found', { status: 404 })
-  }
-
-  // Allow all requests from localhost or Telegram user agents.
+  // Allow requests from native Telegram app webviews and localhost.
   if (pathname.startsWith('/admin')) {
     if (!isLocalhost) {
       const proto = req.headers.get('x-forwarded-proto') || req.nextUrl.protocol
